@@ -72,8 +72,8 @@ final class RickAndMortyResponseMapper
         return new LocationData(
             externalId: $this->requirePositiveInt($payload, 'id'),
             name: $this->requireString($payload, 'name'),
-            type: $this->requireString($payload, 'type'),
-            dimension: $this->requireString($payload, 'dimension'),
+            type: $this->requireString($payload, 'type', allowEmpty: true),
+            dimension: $this->requireString($payload, 'dimension', allowEmpty: true),
         );
     }
 

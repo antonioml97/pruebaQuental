@@ -68,6 +68,60 @@ final class RickAndMortyResponseMapperTest extends TestCase
         $this->assertSame(20, $location->externalId);
     }
 
+    /** Verifica el tipo vacío que el proveedor utiliza en localizaciones conocidas. */
+    public function test_it_maps_a_location_with_an_empty_type(): void
+    {
+        $location = $this->mapper->mapLocation([
+            'id' => 118,
+            'name' => 'Space Tahoe',
+            'type' => '',
+            'dimension' => 'Replacement Dimension',
+        ]);
+
+        $this->assertSame('', $location->type);
+    }
+
+    /** Verifica que admitir texto vacío no permita otros tipos primitivos. */
+    public function test_it_rejects_a_non_string_location_type(): void
+    {
+        $this->expectException(InvalidRickAndMortyResponseException::class);
+        $this->expectExceptionMessage('[type]');
+
+        $this->mapper->mapLocation([
+            'id' => 118,
+            'name' => 'Space Tahoe',
+            'type' => null,
+            'dimension' => 'Replacement Dimension',
+        ]);
+    }
+
+    /** Verifica las dimensiones vacías que el proveedor utiliza en localizaciones conocidas. */
+    public function test_it_maps_a_location_with_an_empty_dimension(): void
+    {
+        $location = $this->mapper->mapLocation([
+            'id' => 123,
+            'name' => 'Normal Size Bug Dimension',
+            'type' => 'Dimension',
+            'dimension' => '',
+        ]);
+
+        $this->assertSame('', $location->dimension);
+    }
+
+    /** Verifica que admitir una dimensión vacía no permita valores no textuales. */
+    public function test_it_rejects_a_non_string_location_dimension(): void
+    {
+        $this->expectException(InvalidRickAndMortyResponseException::class);
+        $this->expectExceptionMessage('[dimension]');
+
+        $this->mapper->mapLocation([
+            'id' => 123,
+            'name' => 'Normal Size Bug Dimension',
+            'type' => 'Dimension',
+            'dimension' => null,
+        ]);
+    }
+
     /** Verifica que las URLs de paginación se convierten en números independientes. */
     public function test_it_maps_a_paginated_response(): void
     {

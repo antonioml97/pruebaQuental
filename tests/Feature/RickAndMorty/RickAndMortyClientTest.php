@@ -17,6 +17,7 @@ use App\Domain\RickAndMorty\Exceptions\RickAndMortyRequestException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use InvalidArgumentException;
 use Tests\TestCase;
 
@@ -154,6 +155,27 @@ final class RickAndMortyClientTest extends TestCase
 
         $this->assertContainsOnlyInstancesOf(EpisodeData::class, $page->items);
         Http::assertSentCount(2);
+    }
+
+    /**
+     * Verifica que el cliente respeta la espera comunicada al alcanzar el límite externo.
+     */
+    public function test_it_respects_retry_after_when_rate_limited(): void
+    {
+        Sleep::fake();
+        Http::fakeSequence()
+            ->push(['error' => 'Too many requests'], 429, ['Retry-After' => '2'])
+            ->push($this->characterPage(), 200);
+
+        try {
+            $page = $this->client->fetchCharacters();
+
+            $this->assertContainsOnlyInstancesOf(CharacterData::class, $page->items);
+            Sleep::assertSequence([Sleep::for(2)->seconds()]);
+            Http::assertSentCount(2);
+        } finally {
+            Sleep::fake(false);
+        }
     }
 
     /**

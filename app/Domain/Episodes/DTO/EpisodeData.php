@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Contiene la representación de dominio de un episodio de Rick and Morty.
  */
 
-namespace App\Domain\RickAndMorty\DTO;
+namespace App\Domain\Episodes\DTO;
 
 use DateTimeImmutable;
 

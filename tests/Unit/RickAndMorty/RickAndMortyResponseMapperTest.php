@@ -8,9 +8,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\RickAndMorty;
 
-use App\Domain\RickAndMorty\DTO\CharacterData;
-use App\Domain\RickAndMorty\DTO\EpisodeData;
-use App\Domain\RickAndMorty\DTO\LocationData;
+use App\Domain\Characters\DTO\CharacterData;
+use App\Domain\Episodes\DTO\EpisodeData;
+use App\Domain\Locations\DTO\LocationData;
 use App\Domain\RickAndMorty\Exceptions\InvalidRickAndMortyResponseException;
 use App\Services\RickAndMorty\RickAndMortyResponseMapper;
 use Error;

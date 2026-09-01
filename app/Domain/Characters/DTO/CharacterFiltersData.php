@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Contiene los filtros validados para consultar personajes.
  */
 
-namespace App\Domain\RickAndMorty\DTO;
+namespace App\Domain\Characters\DTO;
 
 /**
  * Transporta criterios de consulta independientes del protocolo HTTP.

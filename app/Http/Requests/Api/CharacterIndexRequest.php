@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api;
 
-use App\Domain\RickAndMorty\DTO\CharacterFiltersData;
+use App\Domain\Characters\DTO\CharacterFiltersData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

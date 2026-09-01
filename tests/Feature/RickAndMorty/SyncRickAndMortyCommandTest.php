@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\RickAndMorty;
 
+use App\Console\Commands\SyncRickAndMortyCommand;
 use App\Domain\RickAndMorty\Contracts\RickAndMortyClientInterface;
 use App\Domain\RickAndMorty\DTO\PaginatedResponseData;
 use App\Domain\RickAndMorty\Exceptions\RickAndMortyRequestException;
@@ -74,6 +75,17 @@ final class SyncRickAndMortyCommandTest extends TestCase
             ->expectsOutputToContain('Recurso: location')
             ->expectsOutputToContain('Página: 1')
             ->assertFailed();
+    }
+
+    /**
+     * Verifica que el comando bloquea por defecto ejecuciones simultáneas.
+     */
+    public function test_it_is_isolated_by_default(): void
+    {
+        $command = $this->app->make(SyncRickAndMortyCommand::class);
+        $option = $command->getDefinition()->getOption('isolated');
+
+        $this->assertTrue($option->getDefault());
     }
 
     /**

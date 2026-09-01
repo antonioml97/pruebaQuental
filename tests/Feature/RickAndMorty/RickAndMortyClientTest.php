@@ -40,7 +40,7 @@ final class RickAndMortyClientTest extends TestCase
             'timeout' => 10,
             'connect_timeout' => 5,
             'retry_times' => 3,
-            'retry_sleep_milliseconds' => 1,
+            'retry_sleep_milliseconds' => 0,
         ]);
 
         Http::preventStrayRequests();
@@ -138,6 +138,21 @@ final class RickAndMortyClientTest extends TestCase
         $page = $this->client->fetchLocations();
 
         $this->assertContainsOnlyInstancesOf(LocationData::class, $page->items);
+        Http::assertSentCount(2);
+    }
+
+    /**
+     * Verifica que un timeout comunicado por HTTP también se considera recuperable.
+     */
+    public function test_it_retries_an_http_request_timeout(): void
+    {
+        Http::fakeSequence()
+            ->push(['error' => 'Request timeout'], 408)
+            ->push($this->episodePage(), 200);
+
+        $page = $this->client->fetchEpisodes();
+
+        $this->assertContainsOnlyInstancesOf(EpisodeData::class, $page->items);
         Http::assertSentCount(2);
     }
 

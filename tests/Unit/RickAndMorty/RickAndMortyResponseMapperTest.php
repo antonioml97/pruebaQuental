@@ -156,6 +156,35 @@ final class RickAndMortyResponseMapperTest extends TestCase
         ], 1);
     }
 
+    /** Verifica que una página intermedia no puede omitir el enlace siguiente. */
+    public function test_it_rejects_incomplete_pagination(): void
+    {
+        $this->expectException(InvalidRickAndMortyResponseException::class);
+        $this->expectExceptionMessage('[info.next]');
+
+        $this->mapper->mapLocationPage([
+            'info' => [
+                'count' => 10,
+                'pages' => 2,
+                'next' => null,
+                'prev' => null,
+            ],
+            'results' => [],
+        ], 1);
+    }
+
+    /** Verifica que las referencias externas solo admiten protocolos HTTP compatibles. */
+    public function test_it_rejects_a_non_http_resource_url(): void
+    {
+        $payload = $this->validCharacterPayload();
+        $payload['episode'] = ['ftp://rickandmortyapi.com/api/episode/1'];
+
+        $this->expectException(InvalidRickAndMortyResponseException::class);
+        $this->expectExceptionMessage('[episode.0]');
+
+        $this->mapper->mapCharacter($payload);
+    }
+
     /** Verifica que un DTO de dominio no puede modificarse después de crearlo. */
     public function test_domain_data_is_immutable(): void
     {

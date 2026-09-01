@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura almacenamiento, duración y cookies de sesión.
+ */
+
 use Illuminate\Support\Str;
 
 return [

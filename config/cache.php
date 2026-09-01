@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura almacenes, prefijos y bloqueos de caché.
+ */
+
 use Illuminate\Support\Str;
 
 return [

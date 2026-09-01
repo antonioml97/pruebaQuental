@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura conexiones, lotes y fallos del sistema de colas.
+ */
+
 return [
 
     /*

@@ -1,23 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Crea las tablas del almacén de caché basado en base de datos.
+ */
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Gestiona valores de caché y bloqueos atómicos persistentes.
+ */
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Crea las tablas de caché y bloqueos.
      */
     public function up(): void
     {
-        Schema::create('cache', function (Blueprint $table) {
+        Schema::create('cache', function (Blueprint $table): void {
             $table->string('key')->primary();
             $table->mediumText('value');
             $table->integer('expiration')->index();
         });
 
-        Schema::create('cache_locks', function (Blueprint $table) {
+        Schema::create('cache_locks', function (Blueprint $table): void {
             $table->string('key')->primary();
             $table->string('owner');
             $table->integer('expiration')->index();
@@ -25,7 +34,7 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * Elimina las tablas de caché y bloqueos.
      */
     public function down(): void
     {

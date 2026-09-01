@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura guardias, proveedores y recuperación de autenticación.
+ */
+
 use App\Models\User;
 
 return [

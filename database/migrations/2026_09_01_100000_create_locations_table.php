@@ -10,6 +10,9 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Gestiona la estructura persistente de localizaciones externas.
+ */
 return new class extends Migration
 {
     /** Crea la tabla de localizaciones. */

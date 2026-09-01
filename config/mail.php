@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura transportes y remitente del correo electrónico.
+ */
+
 return [
 
     /*

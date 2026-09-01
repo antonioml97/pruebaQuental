@@ -8,7 +8,11 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\RickAndMorty\Contracts\RickAndMortyCatalogFetcherInterface;
+use App\Domain\RickAndMorty\Contracts\RickAndMortyCatalogPersisterInterface;
 use App\Domain\RickAndMorty\Contracts\RickAndMortyClientInterface;
+use App\Services\RickAndMorty\EloquentRickAndMortyCatalogPersister;
+use App\Services\RickAndMorty\RickAndMortyCatalogFetcher;
 use App\Services\RickAndMorty\RickAndMortyClient;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(RickAndMortyClientInterface::class, RickAndMortyClient::class);
+        $this->app->bind(RickAndMortyCatalogFetcherInterface::class, RickAndMortyCatalogFetcher::class);
+        $this->app->bind(
+            RickAndMortyCatalogPersisterInterface::class,
+            EloquentRickAndMortyCatalogPersister::class,
+        );
     }
 
     /**

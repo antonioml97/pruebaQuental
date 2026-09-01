@@ -42,7 +42,7 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
     private const DEFAULT_RETRY_SLEEP_MILLISECONDS = 100;
 
     /** Códigos HTTP recuperables que no pertenecen al rango de errores de servidor. */
-    private const RETRYABLE_STATUS_CODES = [429];
+    private const RETRYABLE_STATUS_CODES = [408, 429];
 
     /**
      * Crea el cliente con el transformador del proveedor.
@@ -161,7 +161,7 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
             ))
             ->retry(
                 $this->positiveConfiguration('retry_times', self::DEFAULT_RETRY_TIMES),
-                $this->positiveConfiguration(
+                $this->nonNegativeConfiguration(
                     'retry_sleep_milliseconds',
                     self::DEFAULT_RETRY_SLEEP_MILLISECONDS,
                 ),
@@ -216,11 +216,33 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
      */
     private function positiveConfiguration(string $key, int $default): int
     {
+        return $this->integerConfiguration($key, $default, 1);
+    }
+
+    /**
+     * Obtiene un entero no negativo desde la configuración del proveedor.
+     *
+     * @throws LogicException Si el valor configurado es negativo o no es entero.
+     */
+    private function nonNegativeConfiguration(string $key, int $default): int
+    {
+        return $this->integerConfiguration($key, $default, 0);
+    }
+
+    /**
+     * Obtiene un entero configurado respetando su valor mínimo.
+     *
+     * @throws LogicException Si el valor configurado no respeta el contrato.
+     */
+    private function integerConfiguration(string $key, int $default, int $minimum): int
+    {
         $value = config("services.rick_and_morty.$key", $default);
         $integer = filter_var($value, FILTER_VALIDATE_INT);
 
-        if (! is_int($integer) || $integer < 1) {
-            throw new LogicException("The Rick and Morty [$key] configuration must be a positive integer.");
+        if (! is_int($integer) || $integer < $minimum) {
+            throw new LogicException(
+                "The Rick and Morty [$key] configuration must be an integer greater than or equal to [$minimum].",
+            );
         }
 
         return $integer;

@@ -150,6 +150,18 @@ final class RickAndMortyResponseMapper
             throw $this->invalid('info.prev', 'does not match the current page');
         }
 
+        if ($currentPage < $totalPages && $nextPage === null) {
+            throw $this->invalid('info.next', 'is required before the last page');
+        }
+
+        if ($currentPage === $totalPages && $nextPage !== null) {
+            throw $this->invalid('info.next', 'must be null on the last page');
+        }
+
+        if ($currentPage > 1 && $previousPage === null) {
+            throw $this->invalid('info.prev', 'is required after the first page');
+        }
+
         $items = [];
 
         foreach ($results as $index => $result) {
@@ -231,8 +243,8 @@ final class RickAndMortyResponseMapper
             return null;
         }
 
-        if (! is_string($info[$field]) || filter_var($info[$field], FILTER_VALIDATE_URL) === false) {
-            throw $this->invalid("info.$field", 'must be null or a valid URL');
+        if (! is_string($info[$field]) || ! $this->isHttpUrl($info[$field])) {
+            throw $this->invalid("info.$field", 'must be null or a valid HTTP URL');
         }
 
         $query = parse_url($info[$field], PHP_URL_QUERY);
@@ -269,8 +281,8 @@ final class RickAndMortyResponseMapper
      */
     private function resourceIdFromUrl(string $url, string $resource, string $field): int
     {
-        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
-            throw $this->invalid($field, 'must be a valid URL');
+        if (! $this->isHttpUrl($url)) {
+            throw $this->invalid($field, 'must be a valid HTTP URL');
         }
 
         $path = parse_url($url, PHP_URL_PATH);
@@ -378,11 +390,25 @@ final class RickAndMortyResponseMapper
     {
         $url = $this->requireString($payload, $field);
 
-        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
-            throw $this->invalid($field, 'must be a valid URL');
+        if (! $this->isHttpUrl($url)) {
+            throw $this->invalid($field, 'must be a valid HTTP URL');
         }
 
         return $url;
+    }
+
+    /**
+     * Comprueba que una URL absoluta utiliza un protocolo admitido por la integración.
+     */
+    private function isHttpUrl(string $url): bool
+    {
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
+
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+
+        return is_string($scheme) && in_array(strtolower($scheme), ['http', 'https'], true);
     }
 
     /**

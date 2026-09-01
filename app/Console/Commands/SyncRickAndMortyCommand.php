@@ -12,17 +12,24 @@ use App\Domain\RickAndMorty\DTO\RickAndMortySyncResultData;
 use App\Domain\RickAndMorty\Exceptions\RickAndMortySynchronizationException;
 use App\Services\RickAndMorty\RickAndMortySyncService;
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Console\Isolatable;
 
 /**
  * Ejecuta el servicio de sincronización y presenta un resultado útil al operador.
  */
-final class SyncRickAndMortyCommand extends Command
+final class SyncRickAndMortyCommand extends Command implements Isolatable
 {
     /** @var string Nombre y argumentos admitidos por el comando. */
     protected $signature = 'rick-and-morty:sync';
 
     /** @var string Descripción mostrada en el listado de Artisan. */
     protected $description = 'Sincroniza el catálogo de Rick and Morty con la base de datos local';
+
+    /** @var bool Activa el bloqueo contra ejecuciones simultáneas sin exigir una opción manual. */
+    protected $isolated = true;
+
+    /** @var int Código devuelto cuando ya existe otra sincronización en curso. */
+    protected $isolatedExitCode = self::FAILURE;
 
     /**
      * Ejecuta la sincronización y devuelve un código de salida coherente.

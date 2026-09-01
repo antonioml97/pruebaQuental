@@ -1,4 +1,725 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: Rick and Morty Sync API
+  title: API de Rick and Morty
   version: 1.0.0
+  license:
+    name: MIT
+    identifier: MIT
+  description: |
+    API REST para consultar el catálogo sincronizado de Rick and Morty y gestionar
+    los personajes favoritos de cada usuario.
+
+    La autenticación usa un token opaco enviado exclusivamente en la cookie
+    `auth_token` con `HttpOnly`. Las operaciones que modifican estado requieren
+    además protección CSRF de doble envío: primero se solicita
+    `GET /api/auth/csrf-cookie` y después se copia el valor de la cookie
+    `XSRF-TOKEN` en la cabecera `X-XSRF-TOKEN`. La interfaz Swagger incluida en
+    el proyecto realiza esta copia automáticamente.
+servers:
+  - url: /
+    description: Mismo origen desde el que se sirve Swagger UI
+tags:
+  - name: Autenticación
+    description: Registro, sesión y usuario actual.
+  - name: Personajes
+    description: Consulta pública del catálogo sincronizado.
+  - name: Favoritos
+    description: Gestión privada e idempotente de favoritos.
+paths:
+  /api/auth/csrf-cookie:
+    get:
+      tags: [Autenticación]
+      summary: Preparar la protección CSRF
+      description: Crea la cookie legible `XSRF-TOKEN` necesaria para operaciones que modifican estado.
+      operationId: obtenerCookieCsrf
+      security: []
+      responses:
+        '204':
+          description: Cookie CSRF creada correctamente.
+          headers:
+            Set-Cookie:
+              description: Cookie `XSRF-TOKEN`; el navegador la conserva para las siguientes peticiones.
+              schema:
+                type: string
+  /api/auth/register:
+    post:
+      tags: [Autenticación]
+      summary: Registrar un usuario
+      operationId: registrarUsuario
+      security:
+        - csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: Morty Smith
+              email: morty@example.com
+              password: Portal123
+              password_confirmation: Portal123
+      responses:
+        '201':
+          $ref: '#/components/responses/AuthenticationCreated'
+        '419':
+          $ref: '#/components/responses/CsrfError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Iniciar sesión
+      operationId: iniciarSesion
+      security:
+        - csrfHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: morty@example.com
+              password: Portal123
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthenticationSucceeded'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '419':
+          $ref: '#/components/responses/CsrfError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+  /api/auth/logout:
+    post:
+      tags: [Autenticación]
+      summary: Cerrar sesión
+      operationId: cerrarSesion
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      responses:
+        '204':
+          description: Sesión revocada y cookie de autenticación eliminada.
+          headers:
+            Set-Cookie:
+              description: Invalida la cookie `auth_token` en el navegador.
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '419':
+          $ref: '#/components/responses/CsrfError'
+  /api/auth/user:
+    get:
+      tags: [Autenticación]
+      summary: Obtener el usuario autenticado
+      operationId: obtenerUsuarioActual
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Identidad pública del usuario actual.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+              example:
+                data:
+                  id: 1
+                  name: Morty Smith
+                  email: morty@example.com
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /api/characters:
+    get:
+      tags: [Personajes]
+      summary: Listar personajes
+      description: Consulta el catálogo local previamente sincronizado con filtros combinables y paginación.
+      operationId: listarPersonajes
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Name'
+        - $ref: '#/components/parameters/Status'
+        - $ref: '#/components/parameters/Species'
+        - $ref: '#/components/parameters/Gender'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Página de personajes que cumplen los filtros.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCharacters'
+              examples:
+                primeraPagina:
+                  $ref: '#/components/examples/PaginatedCharacters'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/characters/{externalId}:
+    get:
+      tags: [Personajes]
+      summary: Obtener el detalle de un personaje
+      operationId: obtenerPersonaje
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/ExternalId'
+      responses:
+        '200':
+          description: Personaje con origen, localización actual y episodios.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CharacterDetail'
+              examples:
+                rick:
+                  $ref: '#/components/examples/CharacterDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/favorites:
+    get:
+      tags: [Favoritos]
+      summary: Listar favoritos del usuario
+      operationId: listarFavoritos
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: Página de personajes favoritos del usuario autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCharacters'
+              examples:
+                primeraPagina:
+                  $ref: '#/components/examples/PaginatedCharacters'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/favorites/{externalId}:
+    parameters:
+      - $ref: '#/components/parameters/ExternalId'
+    put:
+      tags: [Favoritos]
+      summary: Añadir un personaje a favoritos
+      description: Operación idempotente; repetirla mantiene un único favorito.
+      operationId: guardarFavorito
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      responses:
+        '200':
+          description: Personaje presente en favoritos.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CharacterSummary'
+              examples:
+                rick:
+                  value:
+                    data:
+                      id: 1
+                      name: Rick Sanchez
+                      status: Alive
+                      species: Human
+                      type: ''
+                      gender: Male
+                      image_url: https://rickandmortyapi.com/api/character/avatar/1.jpeg
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '419':
+          $ref: '#/components/responses/CsrfError'
+    delete:
+      tags: [Favoritos]
+      summary: Eliminar un personaje de favoritos
+      description: Operación idempotente; responde igual aunque ya no estuviera guardado.
+      operationId: eliminarFavorito
+      security:
+        - cookieAuth: []
+          csrfHeader: []
+      responses:
+        '204':
+          description: Personaje ausente de favoritos.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '419':
+          $ref: '#/components/responses/CsrfError'
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: auth_token
+      description: Token opaco gestionado por el navegador en una cookie `HttpOnly`; no se expone a JavaScript.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Valor decodificado de la cookie `XSRF-TOKEN`. Swagger lo incorpora automáticamente.
+  parameters:
+    ExternalId:
+      name: externalId
+      in: path
+      required: true
+      description: Identificador numérico del personaje en la API externa.
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+    Page:
+      name: page
+      in: query
+      description: Número de página, empezando en uno.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PerPage:
+      name: per_page
+      in: query
+      description: Cantidad de resultados por página.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Name:
+      name: name
+      in: query
+      description: Texto contenido en el nombre, sin distinguir mayúsculas.
+      schema:
+        type: string
+        maxLength: 255
+      example: Rick
+    Status:
+      name: status
+      in: query
+      description: Estado exacto del personaje.
+      schema:
+        type: string
+        enum: [Alive, Dead, unknown]
+    Species:
+      name: species
+      in: query
+      description: Texto contenido en la especie, sin distinguir mayúsculas.
+      schema:
+        type: string
+        maxLength: 255
+      example: Human
+    Gender:
+      name: gender
+      in: query
+      description: Género exacto del personaje.
+      schema:
+        type: string
+        enum: [Female, Male, Genderless, unknown]
+  responses:
+    AuthenticationCreated:
+      description: Usuario creado y sesión iniciada.
+      headers:
+        Set-Cookie:
+          description: Cookie `auth_token` opaca, `HttpOnly` y con caducidad configurable.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthenticationResponse'
+          examples:
+            usuario:
+              $ref: '#/components/examples/AuthenticationResponse'
+    AuthenticationSucceeded:
+      description: Credenciales correctas y sesión iniciada.
+      headers:
+        Set-Cookie:
+          description: Cookie `auth_token` opaca, `HttpOnly` y con caducidad configurable.
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthenticationResponse'
+          examples:
+            usuario:
+              $ref: '#/components/examples/AuthenticationResponse'
+    InvalidCredentials:
+      description: Las credenciales no son válidas.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: invalid_credentials
+              message: Las credenciales proporcionadas no son válidas.
+              details: []
+    Unauthenticated:
+      description: No existe una sesión válida.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: unauthenticated
+              message: Es necesario iniciar sesión para acceder a este recurso.
+              details: []
+    CsrfError:
+      description: Falta el token CSRF o no coincide con la cookie.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: csrf_token_mismatch
+              message: La protección CSRF de la petición no es válida.
+              details: []
+    ValidationError:
+      description: Uno o más datos no cumplen el contrato.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: validation_error
+              message: Los parámetros enviados no son válidos.
+              details:
+                email:
+                  - El campo email debe ser una dirección de correo válida.
+    NotFound:
+      description: El recurso solicitado no existe en el catálogo local.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: resource_not_found
+              message: El recurso solicitado no existe.
+              details: []
+    TooManyRequests:
+      description: Se ha superado el límite de intentos de autenticación.
+      headers:
+        Retry-After:
+          description: Segundos que se deben esperar antes de reintentar.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: too_many_requests
+              message: Se han realizado demasiados intentos. Inténtalo más tarde.
+              details: []
+  schemas:
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [name, email, password, password_confirmation]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+          description: Debe contener mayúsculas, minúsculas y números.
+        password_confirmation:
+          type: string
+          minLength: 8
+          maxLength: 72
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          maxLength: 72
+    AuthenticationResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [user, expires_at]
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            expires_at:
+              type: string
+              format: date-time
+    User:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+    CharacterSummary:
+      type: object
+      required: [id, name, status, species, type, gender, image_url]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+          enum: [Alive, Dead, unknown]
+        species:
+          type: string
+        type:
+          type: string
+          description: Subtipo devuelto por la fuente; puede estar vacío.
+        gender:
+          type: string
+          enum: [Female, Male, Genderless, unknown]
+        image_url:
+          type: string
+          format: uri
+    CharacterDetail:
+      allOf:
+        - $ref: '#/components/schemas/CharacterSummary'
+        - type: object
+          required: [origin, current_location, episodes]
+          properties:
+            origin:
+              oneOf:
+                - $ref: '#/components/schemas/Location'
+                - type: 'null'
+            current_location:
+              oneOf:
+                - $ref: '#/components/schemas/Location'
+                - type: 'null'
+            episodes:
+              type: array
+              items:
+                $ref: '#/components/schemas/Episode'
+    Location:
+      type: object
+      required: [id, name, type, dimension]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        dimension:
+          type: string
+    Episode:
+      type: object
+      required: [id, name, air_date, code]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        air_date:
+          type: string
+          format: date
+        code:
+          type: string
+          pattern: '^S[0-9]{2}E[0-9]{2}$'
+    PaginatedCharacters:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CharacterSummary'
+        links:
+          $ref: '#/components/schemas/PaginationLinks'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+    PaginationLinks:
+      type: object
+      required: [first, last, prev, next]
+      properties:
+        first:
+          type: string
+          format: uri
+        last:
+          type: string
+          format: uri
+        prev:
+          oneOf:
+            - type: string
+              format: uri
+            - type: 'null'
+        next:
+          oneOf:
+            - type: string
+              format: uri
+            - type: 'null'
+    PaginationMeta:
+      type: object
+      required: [current_page, from, last_page, links, path, per_page, to, total]
+      properties:
+        current_page:
+          type: integer
+        from:
+          oneOf:
+            - type: integer
+            - type: 'null'
+        last_page:
+          type: integer
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaginationMetaLink'
+        path:
+          type: string
+          format: uri
+        per_page:
+          type: integer
+        to:
+          oneOf:
+            - type: integer
+            - type: 'null'
+        total:
+          type: integer
+    PaginationMetaLink:
+      type: object
+      required: [url, label, active]
+      properties:
+        url:
+          oneOf:
+            - type: string
+              format: uri
+            - type: 'null'
+        label:
+          type: string
+        active:
+          type: boolean
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              description: Lista vacía o mapa con contexto específico del error.
+              oneOf:
+                - type: array
+                  maxItems: 0
+                - type: object
+                  additionalProperties: true
+  examples:
+    AuthenticationResponse:
+      value:
+        data:
+          user:
+            id: 1
+            name: Morty Smith
+            email: morty@example.com
+          expires_at: '2026-09-02T12:00:00+00:00'
+    CharacterDetail:
+      value:
+        data:
+          id: 1
+          name: Rick Sanchez
+          status: Alive
+          species: Human
+          type: ''
+          gender: Male
+          image_url: https://rickandmortyapi.com/api/character/avatar/1.jpeg
+          origin:
+            id: 1
+            name: Earth (C-137)
+            type: Planet
+            dimension: Dimension C-137
+          current_location:
+            id: 3
+            name: Citadel of Ricks
+            type: Space station
+            dimension: unknown
+          episodes:
+            - id: 1
+              name: Pilot
+              air_date: '2013-12-02'
+              code: S01E01
+    PaginatedCharacters:
+      value:
+        data:
+          - id: 1
+            name: Rick Sanchez
+            status: Alive
+            species: Human
+            type: ''
+            gender: Male
+            image_url: https://rickandmortyapi.com/api/character/avatar/1.jpeg
+        links:
+          first: http://localhost/api/characters?page=1
+          last: http://localhost/api/characters?page=42
+          prev: null
+          next: http://localhost/api/characters?page=2
+        meta:
+          current_page: 1
+          from: 1
+          last_page: 42
+          links:
+            - url: null
+              label: Previous
+              active: false
+            - url: http://localhost/api/characters?page=1
+              label: '1'
+              active: true
+            - url: http://localhost/api/characters?page=2
+              label: Next
+              active: false
+          path: http://localhost/api/characters
+          per_page: 20
+          to: 20
+          total: 826

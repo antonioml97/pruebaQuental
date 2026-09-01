@@ -9,6 +9,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\Authentication\AuthenticationController;
 use App\Http\Controllers\Api\Authentication\CsrfCookieController;
 use App\Http\Controllers\Api\CharacterController;
+use App\Http\Controllers\Api\Favorites\FavoriteCharacterController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->name('api.auth.')->middleware('csrf')->group(function (): void {
@@ -24,6 +25,19 @@ Route::prefix('auth')->name('api.auth.')->middleware('csrf')->group(function ():
         Route::post('logout', [AuthenticationController::class, 'logout'])->name('logout');
     });
 });
+
+Route::prefix('favorites')
+    ->name('api.favorites.')
+    ->middleware(['csrf', 'auth.token'])
+    ->group(function (): void {
+        Route::get('/', [FavoriteCharacterController::class, 'index'])->name('index');
+        Route::put('{externalId}', [FavoriteCharacterController::class, 'store'])
+            ->whereNumber('externalId')
+            ->name('store');
+        Route::delete('{externalId}', [FavoriteCharacterController::class, 'destroy'])
+            ->whereNumber('externalId')
+            ->name('destroy');
+    });
 
 Route::get('characters', [CharacterController::class, 'index'])
     ->name('api.characters.index');

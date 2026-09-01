@@ -10,6 +10,7 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -51,6 +52,16 @@ class User extends Authenticatable
     public function accessTokens(): HasMany
     {
         return $this->hasMany(AccessToken::class);
+    }
+
+    /**
+     * Obtiene los personajes marcados como favoritos por el usuario.
+     *
+     * @return BelongsToMany<Character, $this>
+     */
+    public function favoriteCharacters(): BelongsToMany
+    {
+        return $this->belongsToMany(Character::class, 'favorite_characters')->withTimestamps();
     }
 
     /**

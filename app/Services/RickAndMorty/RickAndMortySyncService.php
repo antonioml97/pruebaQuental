@@ -3,15 +3,15 @@
 declare(strict_types=1);
 
 /**
- * Provides the future Rick and Morty synchronization application service.
+ * Proporciona el futuro servicio de aplicación para sincronizar Rick and Morty.
  */
 
 namespace App\Services\RickAndMorty;
 
 /**
- * Empty service shell pending definition of synchronization behavior.
+ * Esqueleto del servicio pendiente de definir el comportamiento de sincronización.
  */
 final class RickAndMortySyncService
 {
-    // TODO: Add behavior when synchronization is implemented.
+    // TODO: Añadir el comportamiento cuando se implemente la sincronización.
 }

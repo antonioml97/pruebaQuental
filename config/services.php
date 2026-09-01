@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura las integraciones externas utilizadas por la aplicación.
+ */
+
 return [
 
     /*
@@ -36,10 +42,11 @@ return [
     ],
 
     'rick_and_morty' => [
-        'url' => env(
-            'RICK_AND_MORTY_API_URL',
-            'https://rickandmortyapi.com/api'
-        ),
+        'url' => env('RICK_AND_MORTY_API_URL', 'https://rickandmortyapi.com/api'),
+        'timeout' => (int) env('RICK_AND_MORTY_TIMEOUT', 10),
+        'connect_timeout' => (int) env('RICK_AND_MORTY_CONNECT_TIMEOUT', 5),
+        'retry_times' => (int) env('RICK_AND_MORTY_RETRY_TIMES', 3),
+        'retry_sleep_milliseconds' => (int) env('RICK_AND_MORTY_RETRY_SLEEP_MILLISECONDS', 100),
     ],
 
 ];

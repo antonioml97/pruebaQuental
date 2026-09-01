@@ -1,14 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Verifica la ruta web inicial incluida con Laravel.
+ */
+
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class ExampleTest extends TestCase
+/**
+ * Comprueba que el esqueleto web permanece accesible.
+ */
+final class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * Verifica que la página inicial responde correctamente.
      */
     public function test_the_application_returns_a_successful_response(): void
     {

@@ -1,13 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Conserva una comprobación unitaria mínima del entorno PHPUnit.
+ */
+
 namespace Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 
-class ExampleTest extends TestCase
+/**
+ * Confirma que PHPUnit puede ejecutar pruebas unitarias aisladas.
+ */
+final class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * Verifica una afirmación booleana elemental.
      */
     public function test_that_true_is_true(): void
     {

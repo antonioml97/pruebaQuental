@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura discos y enlaces del sistema de archivos.
+ */
+
 return [
 
     /*

@@ -1,19 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Recibe las peticiones HTTP y las entrega a la aplicación Laravel.
+ */
+
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// Determine if the application is in maintenance mode...
+// Carga la respuesta de mantenimiento antes de iniciar la aplicación.
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;
 }
 
-// Register the Composer autoloader...
+// Registra el cargador automático de Composer.
 require __DIR__.'/../vendor/autoload.php';
 
-// Bootstrap Laravel and handle the request...
+// Arranca Laravel y procesa la petición entrante.
 /** @var Application $app */
 $app = require_once __DIR__.'/../bootstrap/app.php';
 

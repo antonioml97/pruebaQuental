@@ -10,6 +10,9 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Gestiona la relación muchos a muchos entre personajes y episodios.
+ */
 return new class extends Migration
 {
     /** Crea la relación muchos a muchos entre personajes y episodios. */

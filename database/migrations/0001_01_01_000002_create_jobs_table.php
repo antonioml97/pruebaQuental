@@ -1,17 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Crea las tablas utilizadas por el sistema de colas de Laravel.
+ */
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Gestiona trabajos pendientes, lotes y trabajos fallidos.
+ */
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Crea las tablas necesarias para procesar trabajos en cola.
      */
     public function up(): void
     {
-        Schema::create('jobs', function (Blueprint $table) {
+        Schema::create('jobs', function (Blueprint $table): void {
             $table->id();
             $table->string('queue')->index();
             $table->longText('payload');
@@ -21,7 +30,7 @@ return new class extends Migration
             $table->unsignedInteger('created_at');
         });
 
-        Schema::create('job_batches', function (Blueprint $table) {
+        Schema::create('job_batches', function (Blueprint $table): void {
             $table->string('id')->primary();
             $table->string('name');
             $table->integer('total_jobs');
@@ -34,7 +43,7 @@ return new class extends Migration
             $table->integer('finished_at')->nullable();
         });
 
-        Schema::create('failed_jobs', function (Blueprint $table) {
+        Schema::create('failed_jobs', function (Blueprint $table): void {
             $table->id();
             $table->string('uuid')->unique();
             $table->text('connection');
@@ -46,7 +55,7 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * Elimina todas las tablas del sistema de colas.
      */
     public function down(): void
     {

@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura conexiones de base de datos y Redis.
+ */
+
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 

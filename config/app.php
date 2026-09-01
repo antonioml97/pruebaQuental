@@ -1,5 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Configura los valores generales y el ciclo de vida de la aplicación.
+ */
+
 return [
 
     /*

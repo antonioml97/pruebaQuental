@@ -1,22 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Define los datos iniciales opcionales del entorno local.
+ */
+
 namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
-class DatabaseSeeder extends Seeder
+/**
+ * Crea un usuario de ejemplo para facilitar el desarrollo local.
+ */
+final class DatabaseSeeder extends Seeder
 {
+    /** Evita disparar eventos de modelos durante la carga inicial. */
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Inserta los datos iniciales de la aplicación.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',

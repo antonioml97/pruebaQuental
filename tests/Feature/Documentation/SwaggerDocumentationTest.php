@@ -20,6 +20,8 @@ final class SwaggerDocumentationTest extends TestCase
      */
     public function test_swagger_ui_is_available(): void
     {
+        $this->withoutVite();
+
         $response = $this->get('/docs');
 
         $response

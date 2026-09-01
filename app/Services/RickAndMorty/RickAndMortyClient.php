@@ -44,6 +44,9 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
     /** Códigos HTTP recuperables que no pertenecen al rango de errores de servidor. */
     private const RETRYABLE_STATUS_CODES = [408, 429];
 
+    /** Límite de seguridad para una espera indicada por el proveedor, en segundos. */
+    private const MAX_RETRY_AFTER_SECONDS = 60;
+
     /**
      * Crea el cliente con el transformador del proveedor.
      */
@@ -161,14 +164,37 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
             ))
             ->retry(
                 $this->positiveConfiguration('retry_times', self::DEFAULT_RETRY_TIMES),
-                $this->nonNegativeConfiguration(
-                    'retry_sleep_milliseconds',
-                    self::DEFAULT_RETRY_SLEEP_MILLISECONDS,
-                ),
+                fn (int $attempt, Throwable $exception): int => $this->retryDelayMilliseconds($exception),
                 fn (Throwable $exception): bool => $this->shouldRetry($exception),
                 throw: false,
             )
             ->get($resource, ['page' => $page]);
+    }
+
+    /**
+     * Respeta `Retry-After` para límites HTTP 429 y usa la espera configurada en el resto.
+     */
+    private function retryDelayMilliseconds(Throwable $exception): int
+    {
+        $configuredDelay = $this->nonNegativeConfiguration(
+            'retry_sleep_milliseconds',
+            self::DEFAULT_RETRY_SLEEP_MILLISECONDS,
+        );
+
+        if (! $exception instanceof RequestException || $exception->response->status() !== 429) {
+            return $configuredDelay;
+        }
+
+        $retryAfter = filter_var(
+            $exception->response->header('Retry-After'),
+            FILTER_VALIDATE_INT,
+        );
+
+        if (! is_int($retryAfter) || $retryAfter < 1) {
+            return $configuredDelay;
+        }
+
+        return min($retryAfter, self::MAX_RETRY_AFTER_SECONDS) * 1000;
     }
 
     /**

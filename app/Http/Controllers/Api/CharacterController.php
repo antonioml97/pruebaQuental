@@ -11,9 +11,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CharacterIndexRequest;
 use App\Http\Resources\CharacterDetailResource;
-use App\Http\Resources\CharacterSummaryResource;
+use App\Http\Resources\PaginatedCharacterCollection;
 use App\Services\Characters\CharacterQueryService;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * Expone listado y detalle sin contener consultas ni reglas de negocio.
@@ -26,8 +25,8 @@ final class CharacterController extends Controller
     public function index(
         CharacterIndexRequest $request,
         CharacterQueryService $query,
-    ): AnonymousResourceCollection {
-        return CharacterSummaryResource::collection($query->paginate($request->filters()));
+    ): PaginatedCharacterCollection {
+        return new PaginatedCharacterCollection($query->paginate($request->filters()));
     }
 
     /**

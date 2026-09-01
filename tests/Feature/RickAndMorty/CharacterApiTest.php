@@ -26,12 +26,20 @@ final class CharacterApiTest extends TestCase
      */
     public function test_it_returns_an_empty_paginated_character_list(): void
     {
-        $this->getJson('/api/characters')
+        $response = $this->getJson('/api/characters');
+
+        $response
             ->assertOk()
             ->assertJsonPath('data', [])
             ->assertJsonPath('meta.current_page', 1)
             ->assertJsonPath('meta.per_page', 20)
             ->assertJsonPath('meta.total', 0);
+
+        $this->assertSame(['first', 'last', 'prev', 'next'], array_keys($response->json('links')));
+        $this->assertSame(
+            ['current_page', 'last_page', 'per_page', 'total'],
+            array_keys($response->json('meta')),
+        );
     }
 
     /**
@@ -43,7 +51,9 @@ final class CharacterApiTest extends TestCase
         $this->createCharacter(['external_id' => 1, 'name' => 'Rick Sanchez']);
         $this->createCharacter(['external_id' => 2, 'name' => 'Morty Smith']);
 
-        $this->getJson('/api/characters?per_page=2&page=2')
+        $response = $this->getJson('/api/characters?per_page=2&page=2');
+
+        $response
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', 3)
@@ -51,6 +61,8 @@ final class CharacterApiTest extends TestCase
             ->assertJsonPath('meta.last_page', 2)
             ->assertJsonPath('meta.per_page', 2)
             ->assertJsonPath('meta.total', 3);
+
+        $this->assertStringContainsString('per_page=2', $response->json('links.first'));
     }
 
     /**

@@ -14,6 +14,9 @@ use App\Domain\RickAndMorty\Contracts\RickAndMortyClientInterface;
 use App\Services\RickAndMorty\EloquentRickAndMortyCatalogPersister;
 use App\Services\RickAndMorty\RickAndMortyCatalogFetcher;
 use App\Services\RickAndMorty\RickAndMortyClient;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -39,6 +42,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // No se requiere inicialización adicional por el momento.
+        RateLimiter::for('authentication', static function (Request $request): array {
+            $email = mb_strtolower(trim((string) $request->input('email')));
+            $ipAddress = $request->ip() ?? 'unknown';
+
+            return [
+                Limit::perMinute(10)->by('authentication-ip|'.$ipAddress),
+                Limit::perMinute(5)->by('authentication-identity|'.$email.'|'.$ipAddress),
+            ];
+        });
     }
 }

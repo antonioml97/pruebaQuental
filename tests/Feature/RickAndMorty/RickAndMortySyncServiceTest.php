@@ -17,6 +17,8 @@ use App\Domain\RickAndMorty\Exceptions\RickAndMortyRequestException;
 use App\Domain\RickAndMorty\Exceptions\RickAndMortySynchronizationException;
 use App\Models\Character;
 use App\Models\Location;
+use App\Services\RickAndMorty\EloquentRickAndMortyCatalogPersister;
+use App\Services\RickAndMorty\RickAndMortyCatalogFetcher;
 use App\Services\RickAndMorty\RickAndMortySyncService;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -70,7 +72,7 @@ final class RickAndMortySyncServiceTest extends TestCase
         $client->shouldReceive('fetchEpisodes')->with(1)->twice()->andReturn($episodes);
         $client->shouldReceive('fetchCharacters')->with(1)->twice()->andReturn($characters);
 
-        $service = new RickAndMortySyncService($client);
+        $service = $this->syncService($client);
         $firstResult = $service->synchronize();
         $secondResult = $service->synchronize();
 
@@ -126,7 +128,7 @@ final class RickAndMortySyncServiceTest extends TestCase
         $client->shouldReceive('fetchCharacters')->with(1)->twice()
             ->andReturn($initialCharacters, $updatedCharacters);
 
-        $service = new RickAndMortySyncService($client);
+        $service = $this->syncService($client);
         $service->synchronize();
         $result = $service->synchronize();
 
@@ -168,7 +170,7 @@ final class RickAndMortySyncServiceTest extends TestCase
         $client->shouldNotReceive('fetchCharacters');
 
         try {
-            (new RickAndMortySyncService($client))->synchronize();
+            $this->syncService($client)->synchronize();
             $this->fail('A controlled synchronization exception was expected.');
         } catch (RickAndMortySynchronizationException $exception) {
             $this->assertSame('fetch', $exception->stage);
@@ -200,7 +202,7 @@ final class RickAndMortySyncServiceTest extends TestCase
         );
 
         try {
-            (new RickAndMortySyncService($client))->synchronize();
+            $this->syncService($client)->synchronize();
             $this->fail('A controlled synchronization exception was expected.');
         } catch (RickAndMortySynchronizationException $exception) {
             $this->assertSame('validation', $exception->stage);
@@ -225,6 +227,17 @@ final class RickAndMortySyncServiceTest extends TestCase
         $client = Mockery::mock(RickAndMortyClientInterface::class);
 
         return $client;
+    }
+
+    /**
+     * Construye la composición real manteniendo sustituido únicamente el proveedor externo.
+     */
+    private function syncService(RickAndMortyClientInterface $client): RickAndMortySyncService
+    {
+        return new RickAndMortySyncService(
+            fetcher: new RickAndMortyCatalogFetcher($client),
+            persister: new EloquentRickAndMortyCatalogPersister,
+        );
     }
 
     /**

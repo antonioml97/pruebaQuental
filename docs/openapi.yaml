@@ -599,44 +599,16 @@ components:
             - type: 'null'
     PaginationMeta:
       type: object
-      required: [current_page, from, last_page, links, path, per_page, to, total]
+      required: [current_page, last_page, per_page, total]
       properties:
         current_page:
           type: integer
-        from:
-          oneOf:
-            - type: integer
-            - type: 'null'
         last_page:
           type: integer
-        links:
-          type: array
-          items:
-            $ref: '#/components/schemas/PaginationMetaLink'
-        path:
-          type: string
-          format: uri
         per_page:
           type: integer
-        to:
-          oneOf:
-            - type: integer
-            - type: 'null'
         total:
           type: integer
-    PaginationMetaLink:
-      type: object
-      required: [url, label, active]
-      properties:
-        url:
-          oneOf:
-            - type: string
-              format: uri
-            - type: 'null'
-        label:
-          type: string
-        active:
-          type: boolean
     ErrorResponse:
       type: object
       required: [error]
@@ -707,19 +679,6 @@ components:
           next: http://localhost/api/characters?page=2
         meta:
           current_page: 1
-          from: 1
           last_page: 42
-          links:
-            - url: null
-              label: Previous
-              active: false
-            - url: http://localhost/api/characters?page=1
-              label: '1'
-              active: true
-            - url: http://localhost/api/characters?page=2
-              label: Next
-              active: false
-          path: http://localhost/api/characters
           per_page: 20
-          to: 20
           total: 826

@@ -59,13 +59,22 @@ final class FavoriteCharacterApiTest extends TestCase
         $secondUser->favoriteCharacters()->attach($otherCharacter);
         Carbon::setTestNow();
 
-        $this->authenticateAs($firstUser)
-            ->getJson('/api/favorites?per_page=1&page=1')
+        $response = $this->authenticateAs($firstUser)
+            ->getJson('/api/favorites?per_page=1&page=1');
+
+        $response
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', 2)
             ->assertJsonPath('meta.total', 2)
             ->assertJsonPath('meta.last_page', 2);
+
+        $this->assertSame(['first', 'last', 'prev', 'next'], array_keys($response->json('links')));
+        $this->assertSame(
+            ['current_page', 'last_page', 'per_page', 'total'],
+            array_keys($response->json('meta')),
+        );
+        $this->assertStringContainsString('per_page=1', $response->json('links.last'));
 
         $this->getJson('/api/favorites?per_page=1&page=2')
             ->assertOk()

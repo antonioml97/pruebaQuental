@@ -11,10 +11,10 @@ namespace App\Http\Controllers\Api\Favorites;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Favorites\FavoriteIndexRequest;
 use App\Http\Resources\CharacterSummaryResource;
+use App\Http\Resources\PaginatedCharacterCollection;
 use App\Models\User;
 use App\Services\Favorites\FavoriteCharacterService;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use LogicException;
 
@@ -29,8 +29,8 @@ final class FavoriteCharacterController extends Controller
     public function index(
         FavoriteIndexRequest $request,
         FavoriteCharacterService $favorites,
-    ): AnonymousResourceCollection {
-        return CharacterSummaryResource::collection(
+    ): PaginatedCharacterCollection {
+        return new PaginatedCharacterCollection(
             $favorites->paginate($this->authenticatedUser($request), $request->perPage()),
         );
     }

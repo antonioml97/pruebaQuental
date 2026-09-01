@@ -61,6 +61,16 @@ final class Character extends Model
     }
 
     /**
+     * Obtiene los usuarios que han marcado el personaje como favorito.
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function favoritedByUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'favorite_characters')->withTimestamps();
+    }
+
+    /**
      * Define las conversiones de atributos del personaje.
      *
      * @return array<string, string>

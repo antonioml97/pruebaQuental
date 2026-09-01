@@ -6,9 +6,9 @@ declare(strict_types=1);
  * Consulta personajes sincronizados sin acoplar el transporte HTTP a Eloquent.
  */
 
-namespace App\Services\RickAndMorty;
+namespace App\Services\Characters;
 
-use App\Domain\RickAndMorty\DTO\CharacterFiltersData;
+use App\Domain\Characters\DTO\CharacterFiltersData;
 use App\Models\Character;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;

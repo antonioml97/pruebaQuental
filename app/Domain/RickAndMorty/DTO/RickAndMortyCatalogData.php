@@ -8,6 +8,10 @@ declare(strict_types=1);
 
 namespace App\Domain\RickAndMorty\DTO;
 
+use App\Domain\Characters\DTO\CharacterData;
+use App\Domain\Episodes\DTO\EpisodeData;
+use App\Domain\Locations\DTO\LocationData;
+
 /**
  * Transporta los recursos externos entre la descarga y la persistencia.
  */

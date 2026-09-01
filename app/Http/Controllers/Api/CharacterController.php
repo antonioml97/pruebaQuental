@@ -12,7 +12,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CharacterIndexRequest;
 use App\Http\Resources\CharacterDetailResource;
 use App\Http\Resources\CharacterSummaryResource;
-use App\Services\RickAndMorty\CharacterQueryService;
+use App\Services\Characters\CharacterQueryService;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**

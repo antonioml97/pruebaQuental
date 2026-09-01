@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Contiene la representación de dominio de un personaje de Rick and Morty.
  */
 
-namespace App\Domain\RickAndMorty\DTO;
+namespace App\Domain\Characters\DTO;
 
 /**
  * Datos inmutables de un personaje necesarios para persistencia y sincronización.

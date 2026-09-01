@@ -8,10 +8,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\RickAndMorty;
 
+use App\Domain\Characters\DTO\CharacterData;
+use App\Domain\Episodes\DTO\EpisodeData;
+use App\Domain\Locations\DTO\LocationData;
 use App\Domain\RickAndMorty\Contracts\RickAndMortyClientInterface;
-use App\Domain\RickAndMorty\DTO\CharacterData;
-use App\Domain\RickAndMorty\DTO\EpisodeData;
-use App\Domain\RickAndMorty\DTO\LocationData;
 use App\Domain\RickAndMorty\DTO\PaginatedResponseData;
 use App\Domain\RickAndMorty\Exceptions\RickAndMortyRequestException;
 use App\Domain\RickAndMorty\Exceptions\RickAndMortySynchronizationException;

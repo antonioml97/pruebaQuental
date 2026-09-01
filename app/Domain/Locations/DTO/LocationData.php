@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Contiene la representación de dominio de una localización de Rick and Morty.
  */
 
-namespace App\Domain\RickAndMorty\DTO;
+namespace App\Domain\Locations\DTO;
 
 /**
  * Datos inmutables de una localización necesarios para persistencia y sincronización.

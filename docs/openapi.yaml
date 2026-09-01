@@ -1,0 +1,4 @@
+openapi: 3.0.3
+info:
+  title: Rick and Morty Sync API
+  version: 1.0.0

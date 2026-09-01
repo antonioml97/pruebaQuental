@@ -1,6 +1,14 @@
 # Contexto del proyecto
 
-Este repositorio está en una fase inicial. No se ha definido todavía un framework, una arquitectura ni comandos oficiales de instalación, ejecución o pruebas. No asumas estas decisiones: infiérelas de los archivos del proyecto cuando aparezcan y actualiza este documento si se consolidan nuevas convenciones.
+Este repositorio contiene un backend Laravel 12 ejecutado mediante Laravel Sail con PHP y MySQL. La integración de Rick and Morty está todavía en fase estructural y no tiene comportamiento funcional.
+
+## Arquitectura y comandos
+
+- Usa `app/Domain` para contratos y representaciones del dominio y `app/Services` para integraciones y servicios de aplicación.
+- Mantén los controladores limitados al transporte HTTP y los modelos a la persistencia Eloquent.
+- Levanta el entorno con `./vendor/bin/sail up -d` y detenlo con `./vendor/bin/sail down`.
+- Ejecuta migraciones con `./vendor/bin/sail artisan migrate` y pruebas con `./vendor/bin/sail artisan test`.
+- En Windows, ejecuta Git, Sail y sus hooks desde WSL2.
 
 ## Forma de trabajar
 

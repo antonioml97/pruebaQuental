@@ -10,6 +10,7 @@ namespace App\Models;
 
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -41,6 +42,16 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    /**
+     * Obtiene los tokens de acceso emitidos al usuario.
+     *
+     * @return HasMany<AccessToken, $this>
+     */
+    public function accessTokens(): HasMany
+    {
+        return $this->hasMany(AccessToken::class);
+    }
 
     /**
      * Define las conversiones de atributos del usuario.

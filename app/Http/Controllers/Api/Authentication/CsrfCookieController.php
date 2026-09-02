@@ -20,6 +20,8 @@ final class CsrfCookieController extends Controller
 {
     /**
      * Crea una cookie legible que Axios replicará en la cabecera X-XSRF-TOKEN.
+     *
+     * @param  AuthenticationCookieFactory  $cookies  Adaptador HTTP que aplica los atributos de seguridad de las cookies.
      */
     public function __invoke(AuthenticationCookieFactory $cookies): Response
     {

@@ -8,13 +8,16 @@ declare(strict_types=1);
 
 namespace App\Services\RickAndMorty;
 
+use App\Domain\Characters\DTO\CharacterData;
+use App\Domain\Episodes\DTO\EpisodeData;
+use App\Domain\Locations\DTO\LocationData;
 use App\Domain\RickAndMorty\Contracts\RickAndMortyCatalogPersisterInterface;
 use App\Domain\RickAndMorty\DTO\RickAndMortyCatalogData;
 use App\Domain\RickAndMorty\DTO\RickAndMortySyncResultData;
 use App\Domain\RickAndMorty\Exceptions\RickAndMortySynchronizationException;
-use App\Models\Character;
-use App\Models\Episode;
-use App\Models\Location;
+use App\Services\Characters\CharacterPersister;
+use App\Services\Episodes\EpisodePersister;
+use App\Services\Locations\LocationPersister;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -25,7 +28,25 @@ use Throwable;
 final class EloquentRickAndMortyCatalogPersister implements RickAndMortyCatalogPersisterInterface
 {
     /**
+     * Recibe los escritores por entidad sin delegar la frontera transaccional.
+     *
+     * @param  LocationPersister  $locations  Escritor de localizaciones que participa en la transacción del catálogo.
+     * @param  EpisodePersister  $episodes  Escritor de episodios que participa en la transacción del catálogo.
+     * @param  CharacterPersister  $characters  Escritor de personajes y relaciones dentro de la transacción del catálogo.
+     */
+    public function __construct(
+        /** Escritor de localizaciones. */
+        private readonly LocationPersister $locations,
+        /** Escritor de episodios. */
+        private readonly EpisodePersister $episodes,
+        /** Escritor de personajes y sus relaciones. */
+        private readonly CharacterPersister $characters,
+    ) {}
+
+    /**
      * Persiste atómicamente una fotografía completa del proveedor.
+     *
+     * @param  RickAndMortyCatalogData  $catalog  Catálogo completo descargado antes de iniciar las escrituras.
      *
      * @throws RickAndMortySynchronizationException
      */
@@ -33,6 +54,9 @@ final class EloquentRickAndMortyCatalogPersister implements RickAndMortyCatalogP
     {
         try {
             return DB::transaction(
+                /**
+                 * Ejecuta todos los guardados bajo la misma transacción del catálogo.
+                 */
                 fn (): RickAndMortySyncResultData => $this->persistWithinTransaction($catalog),
             );
         } catch (RickAndMortySynchronizationException $exception) {
@@ -45,85 +69,19 @@ final class EloquentRickAndMortyCatalogPersister implements RickAndMortyCatalogP
     /**
      * Guarda recursos y relaciones dentro de la transacción activa.
      *
+     * @param  RickAndMortyCatalogData  $catalog  Catálogo completo descargado antes de iniciar las escrituras.
+     *
      * @throws RickAndMortySynchronizationException Si una referencia no puede resolverse.
      */
     private function persistWithinTransaction(RickAndMortyCatalogData $catalog): RickAndMortySyncResultData
     {
         /** @var array{created: int, updated: int, unchanged: int} $statistics */
         $statistics = ['created' => 0, 'updated' => 0, 'unchanged' => 0];
-        $locationIds = [];
-        $episodeIds = [];
-        $relationsProcessed = 0;
-
-        foreach ($catalog->locations as $data) {
-            $location = Location::query()->updateOrCreate(
-                ['external_id' => $data->externalId],
-                [
-                    'name' => $data->name,
-                    'type' => $data->type,
-                    'dimension' => $data->dimension,
-                ],
-            );
-
-            $this->recordPersistenceResult($location, $statistics);
-            $locationIds[$data->externalId] = (int) $location->getKey();
-        }
-
-        foreach ($catalog->episodes as $data) {
-            $episode = Episode::query()->updateOrCreate(
-                ['external_id' => $data->externalId],
-                [
-                    'name' => $data->name,
-                    'air_date' => $data->airDate,
-                    'code' => $data->code,
-                ],
-            );
-
-            $this->recordPersistenceResult($episode, $statistics);
-            $episodeIds[$data->externalId] = (int) $episode->getKey();
-        }
-
-        foreach ($catalog->characters as $data) {
-            $character = Character::query()->updateOrCreate(
-                ['external_id' => $data->externalId],
-                [
-                    'name' => $data->name,
-                    'status' => $data->status,
-                    'species' => $data->species,
-                    'type' => $data->type,
-                    'gender' => $data->gender,
-                    'image_url' => $data->imageUrl,
-                    'origin_location_id' => $this->optionalReference(
-                        idsByExternalId: $locationIds,
-                        externalId: $data->originLocationExternalId,
-                        resource: 'location',
-                        characterExternalId: $data->externalId,
-                    ),
-                    'current_location_id' => $this->optionalReference(
-                        idsByExternalId: $locationIds,
-                        externalId: $data->currentLocationExternalId,
-                        resource: 'location',
-                        characterExternalId: $data->externalId,
-                    ),
-                ],
-            );
-
-            $this->recordPersistenceResult($character, $statistics);
-
-            $characterEpisodeIds = [];
-
-            foreach ($data->episodeExternalIds as $episodeExternalId) {
-                $characterEpisodeIds[] = $this->requiredReference(
-                    idsByExternalId: $episodeIds,
-                    externalId: $episodeExternalId,
-                    resource: 'episode',
-                    characterExternalId: $data->externalId,
-                );
-            }
-
-            $character->episodes()->sync($characterEpisodeIds);
-            $relationsProcessed += count($characterEpisodeIds);
-        }
+        $locationIds = $this->persistLocations($catalog->locations, $statistics);
+        $episodeIds = $this->persistEpisodes($catalog->episodes, $statistics);
+        $relationsProcessed = $this->persistCharacters(
+            $catalog->characters, $locationIds, $episodeIds, $statistics,
+        );
 
         return new RickAndMortySyncResultData(
             locationsProcessed: count($catalog->locations),
@@ -137,9 +95,96 @@ final class EloquentRickAndMortyCatalogPersister implements RickAndMortyCatalogP
     }
 
     /**
+     * Guarda localizaciones y construye la correspondencia de claves para los personajes.
+     *
+     * @param  list<LocationData>  $locations  Localizaciones externas del catálogo completo.
+     * @param  array{created: int, updated: int, unchanged: int}  $statistics  Contadores compartidos que se actualizan por referencia.
+     * @return array<int, int> Claves locales indexadas por el identificador externo.
+     */
+    private function persistLocations(array $locations, array &$statistics): array
+    {
+        $locationIds = [];
+
+        foreach ($locations as $data) {
+            $location = $this->locations->persist($data);
+
+            $this->recordPersistenceResult($location, $statistics);
+            $locationIds[$data->externalId] = (int) $location->getKey();
+        }
+
+        return $locationIds;
+    }
+
+    /**
+     * Guarda episodios antes de resolver las relaciones de los personajes.
+     *
+     * @param  list<EpisodeData>  $episodes  Episodios externos del catálogo completo.
+     * @param  array{created: int, updated: int, unchanged: int}  $statistics  Contadores compartidos que se actualizan por referencia.
+     * @return array<int, int> Claves locales indexadas por el identificador externo.
+     */
+    private function persistEpisodes(array $episodes, array &$statistics): array
+    {
+        $episodeIds = [];
+
+        foreach ($episodes as $data) {
+            $episode = $this->episodes->persist($data);
+
+            $this->recordPersistenceResult($episode, $statistics);
+            $episodeIds[$data->externalId] = (int) $episode->getKey();
+        }
+
+        return $episodeIds;
+    }
+
+    /**
+     * Resuelve referencias y guarda los personajes dentro de la transacción del catálogo.
+     *
+     * @param  list<CharacterData>  $characters  Personajes externos y sus referencias.
+     * @param  array<int, int>  $locationIds  Claves locales de localizaciones indexadas por su identificador externo.
+     * @param  array<int, int>  $episodeIds  Claves locales de episodios indexadas por su identificador externo.
+     * @param  array{created: int, updated: int, unchanged: int}  $statistics  Contadores compartidos que se actualizan por referencia.
+     * @return int Número de relaciones personaje-episodio sincronizadas.
+     *
+     * @throws RickAndMortySynchronizationException Si una referencia no está presente en el catálogo.
+     */
+    private function persistCharacters(
+        array $characters,
+        array $locationIds,
+        array $episodeIds,
+        array &$statistics,
+    ): int {
+        $relationsProcessed = 0;
+
+        foreach ($characters as $data) {
+            $originLocationId = $this->optionalReference(
+                $locationIds, $data->originLocationExternalId, 'location', $data->externalId,
+            );
+            $currentLocationId = $this->optionalReference(
+                $locationIds, $data->currentLocationExternalId, 'location', $data->externalId,
+            );
+            $characterEpisodeIds = [];
+
+            foreach ($data->episodeExternalIds as $episodeExternalId) {
+                $characterEpisodeIds[] = $this->requiredReference(
+                    $episodeIds, $episodeExternalId, 'episode', $data->externalId,
+                );
+            }
+
+            $character = $this->characters->persist(
+                $data, $originLocationId, $currentLocationId, $characterEpisodeIds,
+            );
+            $this->recordPersistenceResult($character, $statistics);
+            $relationsProcessed += count($characterEpisodeIds);
+        }
+
+        return $relationsProcessed;
+    }
+
+    /**
      * Clasifica un guardado como creación, actualización o ausencia de cambios.
      *
-     * @param  array{created: int, updated: int, unchanged: int}  $statistics
+     * @param  Model  $model  Modelo recién guardado cuyo estado permite distinguir altas y cambios.
+     * @param  array{created: int, updated: int, unchanged: int}  $statistics  Contadores acumulados que se modifican por referencia tras cada guardado.
      */
     private function recordPersistenceResult(Model $model, array &$statistics): void
     {
@@ -161,7 +206,10 @@ final class EloquentRickAndMortyCatalogPersister implements RickAndMortyCatalogP
     /**
      * Resuelve una referencia externa opcional como clave local.
      *
-     * @param  array<int, int>  $idsByExternalId
+     * @param  array<int, int>  $idsByExternalId  Correspondencia entre identificadores externos y claves locales ya persistidas.
+     * @param  int|null  $externalId  Identificador público del proveedor, o null si se desconoce la referencia.
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $characterExternalId  Identificador externo del personaje cuya referencia se está resolviendo.
      *
      * @throws RickAndMortySynchronizationException Si la referencia no existe.
      */
@@ -186,7 +234,10 @@ final class EloquentRickAndMortyCatalogPersister implements RickAndMortyCatalogP
     /**
      * Resuelve una referencia externa obligatoria como clave local.
      *
-     * @param  array<int, int>  $idsByExternalId
+     * @param  array<int, int>  $idsByExternalId  Correspondencia entre identificadores externos y claves locales ya persistidas.
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $characterExternalId  Identificador externo del personaje cuya referencia se está resolviendo.
      *
      * @throws RickAndMortySynchronizationException Si la referencia no existe.
      */

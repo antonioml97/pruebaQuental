@@ -24,6 +24,11 @@ final class RickAndMortyRequestException extends RuntimeException
 
     /**
      * Crea una excepción controlada para una petición externa.
+     *
+     * @param  string  $message  Descripción controlada del fallo, sin el cuerpo de la respuesta externa.
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int|null  $statusCode  Estado HTTP recibido del proveedor, o null si no hubo respuesta.
+     * @param  Throwable|null  $previous  Causa original que se conserva en la cadena de excepciones. Null cuando no existe una causa previa.
      */
     private function __construct(
         string $message,
@@ -39,11 +44,14 @@ final class RickAndMortyRequestException extends RuntimeException
 
     /**
      * Representa una petición que no llegó a recibir respuesta.
+     *
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  Throwable  $previous  Causa original que se conserva en la cadena de excepciones.
      */
     public static function connectionFailed(string $resource, Throwable $previous): self
     {
         return new self(
-            message: "Could not connect to the Rick and Morty API while requesting [$resource].",
+            message: "No se pudo conectar con la API de Rick and Morty al solicitar el recurso [$resource].",
             resource: $resource,
             previous: $previous,
         );
@@ -51,11 +59,14 @@ final class RickAndMortyRequestException extends RuntimeException
 
     /**
      * Representa una respuesta HTTP no satisfactoria sin exponer su cuerpo.
+     *
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $statusCode  Estado HTTP no satisfactorio recibido del proveedor.
      */
     public static function unexpectedStatus(string $resource, int $statusCode): self
     {
         return new self(
-            message: "Rick and Morty API request [$resource] failed with HTTP status [$statusCode].",
+            message: "La petición del recurso [$resource] a la API de Rick and Morty falló con el estado HTTP [$statusCode].",
             resource: $resource,
             statusCode: $statusCode,
         );

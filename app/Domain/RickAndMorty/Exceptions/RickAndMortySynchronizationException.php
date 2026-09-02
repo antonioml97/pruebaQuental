@@ -27,6 +27,12 @@ final class RickAndMortySynchronizationException extends RuntimeException
 
     /**
      * Crea una excepción controlada con contexto observable y seguro.
+     *
+     * @param  string  $message  Descripción controlada del fallo, sin el cuerpo de la respuesta externa.
+     * @param  string  $stage  Etapa de la sincronización: descarga, validación o persistencia.
+     * @param  string|null  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int|null  $page  Página externa implicada, o null cuando el fallo no corresponde a una descarga.
+     * @param  Throwable|null  $previous  Causa original que se conserva en la cadena de excepciones. Null cuando no existe una causa previa.
      */
     private function __construct(
         string $message,
@@ -44,6 +50,10 @@ final class RickAndMortySynchronizationException extends RuntimeException
 
     /**
      * Indica que una página externa no pudo descargarse o validarse.
+     *
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
+     * @param  Throwable  $previous  Causa original que se conserva en la cadena de excepciones.
      */
     public static function sourceFailed(
         string $resource,
@@ -51,7 +61,7 @@ final class RickAndMortySynchronizationException extends RuntimeException
         Throwable $previous,
     ): self {
         return new self(
-            message: "Rick and Morty synchronization failed while fetching [$resource] page [$page].",
+            message: "La sincronización de Rick and Morty falló al obtener la página [$page] del recurso [$resource].",
             stage: 'fetch',
             resource: $resource,
             page: $page,
@@ -61,11 +71,14 @@ final class RickAndMortySynchronizationException extends RuntimeException
 
     /**
      * Indica que la paginación cambió o quedó incompleta durante la descarga.
+     *
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
      */
     public static function invalidPagination(string $resource, int $page): self
     {
         return new self(
-            message: "Rick and Morty [$resource] pagination is inconsistent at page [$page].",
+            message: "La paginación del recurso [$resource] de Rick and Morty es inconsistente en la página [$page].",
             stage: 'validation',
             resource: $resource,
             page: $page,
@@ -74,11 +87,14 @@ final class RickAndMortySynchronizationException extends RuntimeException
 
     /**
      * Indica que el proveedor repitió un identificador entre páginas.
+     *
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
      */
     public static function duplicateExternalId(string $resource, int $externalId): self
     {
         return new self(
-            message: "Rick and Morty [$resource] external identifier [$externalId] is duplicated.",
+            message: "El identificador externo [$externalId] del recurso [$resource] de Rick and Morty está duplicado.",
             stage: 'validation',
             resource: $resource,
         );
@@ -86,6 +102,10 @@ final class RickAndMortySynchronizationException extends RuntimeException
 
     /**
      * Indica que un personaje referencia un recurso externo inexistente.
+     *
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  int  $characterExternalId  Identificador externo del personaje cuya referencia se está resolviendo.
      */
     public static function missingReference(
         string $resource,
@@ -93,7 +113,7 @@ final class RickAndMortySynchronizationException extends RuntimeException
         int $characterExternalId,
     ): self {
         return new self(
-            message: "Rick and Morty character [$characterExternalId] references missing [$resource] [$externalId].",
+            message: "El personaje [$characterExternalId] de Rick and Morty referencia el recurso inexistente [$resource] con identificador [$externalId].",
             stage: 'validation',
             resource: $resource,
         );
@@ -101,11 +121,13 @@ final class RickAndMortySynchronizationException extends RuntimeException
 
     /**
      * Traduce un fallo de base de datos después de revertir la transacción.
+     *
+     * @param  Throwable  $previous  Causa original que se conserva en la cadena de excepciones.
      */
     public static function persistenceFailed(Throwable $previous): self
     {
         return new self(
-            message: 'Rick and Morty synchronization could not be persisted.',
+            message: 'No se pudo guardar la sincronización de Rick and Morty.',
             stage: 'persistence',
             previous: $previous,
         );

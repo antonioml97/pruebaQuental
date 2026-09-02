@@ -18,25 +18,31 @@ return new class extends Migration
     /** Crea la tabla de personajes y sus referencias a localizaciones. */
     public function up(): void
     {
-        Schema::create('characters', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('external_id')->unique();
-            $table->string('name');
-            $table->string('status', 20);
-            $table->string('species');
-            $table->string('type')->default('');
-            $table->string('gender', 20);
-            $table->string('image_url', 2048);
-            $table->foreignId('origin_location_id')
-                ->nullable()
-                ->constrained('locations')
-                ->nullOnDelete();
-            $table->foreignId('current_location_id')
-                ->nullable()
-                ->constrained('locations')
-                ->nullOnDelete();
-            $table->timestamps();
-        });
+        Schema::create('characters',
+            /**
+             * Define columnas, índices y restricciones de la tabla characters.
+             *
+             * @param  Blueprint  $table  Definición de characters que Laravel convertirá en SQL.
+             */
+            function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('external_id')->unique();
+                $table->string('name');
+                $table->string('status', 20);
+                $table->string('species');
+                $table->string('type')->default('');
+                $table->string('gender', 20);
+                $table->string('image_url', 2048);
+                $table->foreignId('origin_location_id')
+                    ->nullable()
+                    ->constrained('locations')
+                    ->nullOnDelete();
+                $table->foreignId('current_location_id')
+                    ->nullable()
+                    ->constrained('locations')
+                    ->nullOnDelete();
+                $table->timestamps();
+            });
     }
 
     /** Elimina la tabla de personajes. */

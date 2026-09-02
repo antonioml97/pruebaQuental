@@ -21,6 +21,7 @@ final class CharacterDetailResource extends CharacterSummaryResource
     /**
      * Transforma un personaje y sus relaciones al contrato de detalle.
      *
+     * @param  Request  $request  Contexto HTTP recibido por Laravel durante la serialización del recurso.
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

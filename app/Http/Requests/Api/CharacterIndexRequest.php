@@ -48,6 +48,14 @@ final class CharacterIndexRequest extends FormRequest
     }
 
     /**
+     * Obtiene la página validada sin depender del resolvedor global de paginación.
+     */
+    public function page(): int
+    {
+        return (int) $this->validated('page', 1);
+    }
+
+    /**
      * Construye filtros tipados a partir de los parámetros validados.
      */
     public function filters(): CharacterFiltersData

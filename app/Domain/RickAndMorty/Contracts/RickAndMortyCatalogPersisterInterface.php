@@ -20,6 +20,8 @@ interface RickAndMortyCatalogPersisterInterface
     /**
      * Persiste atómicamente una fotografía externa completa.
      *
+     * @param  RickAndMortyCatalogData  $catalog  Catálogo completo descargado antes de iniciar las escrituras.
+     *
      * @throws RickAndMortySynchronizationException Si la fotografía no puede persistirse.
      */
     public function persist(RickAndMortyCatalogData $catalog): RickAndMortySyncResultData;

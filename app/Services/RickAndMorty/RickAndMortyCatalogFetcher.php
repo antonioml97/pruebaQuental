@@ -26,8 +26,11 @@ final class RickAndMortyCatalogFetcher implements RickAndMortyCatalogFetcherInte
 {
     /**
      * Crea el lector sobre el contrato del cliente externo.
+     *
+     * @param  RickAndMortyClientInterface  $client  Cliente intercambiable del proveedor, sustituible por un doble en pruebas.
      */
     public function __construct(
+        /** Cliente del proveedor usado para recorrer páginas de recursos. */
         private readonly RickAndMortyClientInterface $client,
     ) {}
 
@@ -50,7 +53,8 @@ final class RickAndMortyCatalogFetcher implements RickAndMortyCatalogFetcherInte
      *
      * @template T of CharacterData|EpisodeData|LocationData
      *
-     * @param  Closure(int): PaginatedResponseData<T>  $fetchPage
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  Closure(int): PaginatedResponseData<T>  $fetchPage  Lector de una página numerada que devuelve DTOs del recurso solicitado.
      * @return list<T>
      *
      * @throws RickAndMortySynchronizationException
@@ -116,7 +120,10 @@ final class RickAndMortyCatalogFetcher implements RickAndMortyCatalogFetcherInte
     /**
      * Comprueba que la fuente permite recorrer exactamente todas sus páginas.
      *
-     * @param  PaginatedResponseData<CharacterData|EpisodeData|LocationData>  $page
+     * @param  PaginatedResponseData<CharacterData|EpisodeData|LocationData>  $page  Página recibida cuyos metadatos se comparan con los de la descarga.
+     * @param  int  $requestedPage  Página solicitada al cliente externo, comenzando en uno.
+     * @param  int  $expectedTotalPages  Total de páginas fijado por la primera respuesta de la descarga.
+     * @param  int  $expectedTotalItems  Total de recursos fijado por la primera respuesta de la descarga.
      */
     private function hasConsistentPagination(
         PaginatedResponseData $page,
@@ -141,6 +148,8 @@ final class RickAndMortyCatalogFetcher implements RickAndMortyCatalogFetcherInte
 
     /**
      * Obtiene el identificador común de los DTOs sincronizables.
+     *
+     * @param  CharacterData|EpisodeData|LocationData  $item  Recurso de dominio del que se extrae el identificador del proveedor.
      */
     private function externalId(CharacterData|EpisodeData|LocationData $item): int
     {

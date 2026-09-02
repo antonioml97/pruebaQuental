@@ -22,8 +22,9 @@ final class PaginatedCharacterCollection extends ResourceCollection
     /**
      * Reduce los metadatos predeterminados de Laravel al contrato público estable.
      *
-     * @param  array<string, mixed>  $paginated
-     * @param  array<string, mixed>  $default
+     * @param  Request  $request  Contexto HTTP recibido por Laravel durante la serialización del recurso.
+     * @param  array<string, mixed>  $paginated  Representación del paginador de Laravel con sus contadores y límites.
+     * @param  array<string, mixed>  $default  Metadatos y enlaces predeterminados de Laravel antes de reducirlos al contrato.
      * @return array<string, mixed>
      */
     public function paginationInformation(Request $request, array $paginated, array $default): array

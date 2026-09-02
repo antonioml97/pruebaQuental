@@ -18,14 +18,20 @@ return new class extends Migration
     /** Crea la tabla de localizaciones. */
     public function up(): void
     {
-        Schema::create('locations', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('external_id')->unique();
-            $table->string('name');
-            $table->string('type');
-            $table->string('dimension');
-            $table->timestamps();
-        });
+        Schema::create('locations',
+            /**
+             * Define columnas, índices y restricciones de la tabla locations.
+             *
+             * @param  Blueprint  $table  Definición de locations que Laravel convertirá en SQL.
+             */
+            function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('external_id')->unique();
+                $table->string('name');
+                $table->string('type');
+                $table->string('dimension');
+                $table->timestamps();
+            });
     }
 
     /** Elimina la tabla de localizaciones. */

@@ -37,6 +37,14 @@ final class FavoriteIndexRequest extends FormRequest
     }
 
     /**
+     * Obtiene la página validada sin depender del resolvedor global de paginación.
+     */
+    public function page(): int
+    {
+        return (int) $this->validated('page', 1);
+    }
+
+    /**
      * Devuelve el tamaño validado o el valor predeterminado del contrato.
      */
     public function perPage(): int

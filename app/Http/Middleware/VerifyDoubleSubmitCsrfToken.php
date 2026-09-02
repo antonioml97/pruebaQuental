@@ -21,7 +21,8 @@ final class VerifyDoubleSubmitCsrfToken
     /**
      * Valida el token CSRF de los métodos que pueden modificar estado.
      *
-     * @param  Closure(Request): Response  $next
+     * @param  Request  $request  Petición cuya cookie XSRF-TOKEN debe coincidir con la cabecera X-XSRF-TOKEN.
+     * @param  Closure(Request): Response  $next  Siguiente manejador de la cadena, invocado solo si la petición supera el middleware.
      *
      * @throws CsrfTokenMismatchException Cuando falta el token o no coincide.
      */

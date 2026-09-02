@@ -129,6 +129,56 @@ final class AuthenticationApiTest extends TestCase
     }
 
     /**
+     * Conserva el contrato de login y reserva el secreto a la cookie HttpOnly.
+     */
+    public function test_login_returns_the_public_identity_and_a_private_cookie(): void
+    {
+        User::factory()->create([
+            'email' => 'rick@example.test',
+            'password' => 'Portal123',
+        ]);
+
+        $response = $this->withCsrf()->postJson('/api/auth/login', [
+            'email' => 'rick@example.test',
+            'password' => 'Portal123',
+        ])->assertOk()
+            ->assertJsonPath('data.user.email', 'rick@example.test')
+            ->assertJsonStructure(['data' => ['user' => ['id', 'name', 'email'], 'expires_at']])
+            ->assertJsonMissingPath('data.token')
+            ->assertJsonMissingPath('data.access_token')
+            ->assertJsonMissingPath('data.user.password');
+
+        $cookie = $response->getCookie('auth_token', false);
+        self::assertInstanceOf(Cookie::class, $cookie);
+        self::assertTrue($cookie->isHttpOnly());
+        [$identifier, $secret] = explode('|', (string) $cookie->getValue(), 2);
+        $response->assertDontSee($secret, false);
+        self::assertSame(hash('sha256', $secret), AccessToken::query()->findOrFail((int) $identifier)->token_hash);
+    }
+
+    /**
+     * Mantiene CSRF en login y logout después de separar sus controladores.
+     */
+    public function test_login_and_logout_keep_csrf_protection(): void
+    {
+        $authCookie = $this->registerAndGetAuthenticationCookie();
+        $this->withUnencryptedCookie('auth_token', $authCookie)
+            ->withHeader('X-XSRF-TOKEN', '');
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'rick@example.test',
+            'password' => 'Portal123',
+        ])->assertStatus(419)->assertJsonPath('error.code', 'csrf_token_mismatch');
+
+        $this->postJson('/api/auth/logout')
+            ->assertStatus(419)
+            ->assertJsonPath('error.code', 'csrf_token_mismatch');
+
+        $this->assertDatabaseCount('access_tokens', 1);
+        $this->getJson('/api/auth/user')->assertOk();
+    }
+
+    /**
      * Verifica que una cookie válida permite recuperar el usuario actual.
      */
     public function test_it_authenticates_a_valid_cookie(): void

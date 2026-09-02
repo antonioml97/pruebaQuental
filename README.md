@@ -232,13 +232,46 @@ están definidos en OpenAPI.
 - `app/Domain` contiene contratos, DTO, excepciones y representaciones del dominio.
 - `app/Services` coordina los casos de uso y las integraciones externas.
 - Los controladores se limitan al transporte HTTP.
+- La autenticación usa controladores de acción única para registro, login, logout,
+  usuario actual y cookie CSRF. `AuthenticationResponseFactory`, en la capa HTTP,
+  centraliza la respuesta JSON y la cookie privada de registro y login.
 - Los modelos Eloquent se ocupan de la persistencia y las relaciones.
 - El proveedor externo se abstrae mediante contratos para que pueda sustituirse y probarse sin red.
 - La autenticación usa tokens opacos propios. Solo se persiste su huella SHA-256 y el valor original viaja en una cookie `HttpOnly`.
+- `app/Services/Authentication` reúne registro, login y ciclo de vida de tokens:
+  generación (`TokenGenerator`), validación de solo
+  lectura (`TokenValidator`), actividad (`TokenUsageRecorder`) y revocación
+  (`TokenRevocationService`). El middleware registra uso solo tras validar el token.
+  Registrar uso no prolonga la caducidad; no existe renovación de tokens.
+- `Services/Authentication` contiene `RegisterUserService` y `LoginService`.
+  Ambos delegan la emisión y el registro conserva una transacción para usuario y token.
+- `Services/Favorites` separa listado, alta y eliminación en servicios específicos,
+  manteniendo el aislamiento por usuario y la idempotencia de las mutaciones.
+- Los servicios de listado reciben la página explícitamente. Los controladores
+  pasan el valor validado y las colecciones HTTP conservan los filtros en los
+  enlaces; los servicios no copian parámetros de la petición.
+- Los DTOs son clases `readonly` con propiedades promovidas, conservando tipos,
+  nombres de argumentos y PHPDoc de propiedades y parámetros.
+- `Services/RickAndMorty/Mapping` separa los mappers de personajes, episodios,
+  localizaciones y páginas; `ResponsePayloadReader` concentra las validaciones comunes.
+  `RetryPolicy` decide los errores recuperables y la espera de `Retry-After`.
+- Los persistidores de personajes, episodios y localizaciones residen en sus
+  carpetas funcionales. El coordinador del catálogo resuelve referencias, agrega
+  resultados y mantiene una única transacción global: un fallo revierte también
+  los recursos y relaciones guardados anteriormente.
+- El coordinador organiza sus recorridos en métodos privados por recurso; esta
+  separación no añade capas ni cambia las consultas o los contadores.
+- Los mensajes de las excepciones propias están en castellano. Los nombres de
+  campos externos, códigos y etapas técnicas se conservan para el diagnóstico.
 - Las peticiones que modifican estado usan CSRF de doble envío y los intentos de autenticación tienen limitación de frecuencia.
 - Los errores siguen el formato común `{ "error": { "code", "message", "details" } }`.
 
 ## Calidad y pruebas
+
+Las pruebas de cada mapper están separadas en `tests/Unit/RickAndMorty/Mapping`.
+Comparten únicamente los datos externos de `tests/Support/RickAndMortyPayloads`.
+`tests/Unit/Domain` comprueba el contenido y la inmutabilidad de los DTOs sin
+depender de los transformadores.
 
 ```sh
 # Suite completa

@@ -2,7 +2,7 @@
 
 Backend REST desarrollado con Laravel 12 para sincronizar el catálogo público de
 Rick and Morty, consultarlo con filtros y gestionar los personajes favoritos de
-cada usuario. Incluye la base de una SPA Vue 3, compilada con Vite y estilizada con
+cada usuario. Incluye una SPA Vue 3 funcional, compilada con Vite y estilizada con
 Tailwind CSS. El entorno local se ejecuta con Laravel Sail, PHP y MySQL.
 
 ## Requisitos
@@ -21,7 +21,7 @@ el contenedor de Composer indicado durante la instalación.
 Desde una terminal WSL2:
 
 ```sh
-git clone <url-del-repositorio>
+git clone https://github.com/antonioml97/pruebaQuental.git
 cd pruebaQuental
 cp .env.example .env
 
@@ -307,7 +307,7 @@ npm run build
 
 ## Uso desde Vue y Axios
 
-El cliente explícito de `services/http` utiliza `withCredentials: true`,
+El cliente explícito de `shared/services/http` utiliza `withCredentials: true`,
 `withXSRFToken: true`, `Accept: application/json` y un timeout de 10 segundos.
 Solo admite destinos dentro de la base configurada, evitando enviar la cabecera
 CSRF por accidente a otra URL. No se instala Axios en `window`.
@@ -491,3 +491,6 @@ GitHub Actions ejecuta la suite en PHP 8.2, 8.3 y 8.4 con SQLite. La comprobaci�
 de frontend ejecuta las pruebas Vue, valida OpenAPI y compila la SPA y Swagger UI.
 El hook local `pre-push`
 ejecuta las pruebas de Laravel mediante Sail y cancela el envío si fallan.
+
+La revisión final del backend y la SPA, con resultados, alcance y pasos para
+repetirla, está en [Validación de entrega](docs/validacion-entrega.md).

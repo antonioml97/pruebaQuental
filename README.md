@@ -52,15 +52,16 @@ Para detener los contenedores:
 ## Desarrollo del frontend
 
 La entrada `/` sirve una vista Blade mínima que monta `App.vue` y redirige al
-catálogo provisional en `/characters`. Vue Router 4 utiliza historial HTML5 y
+catálogo en `/characters`. Vue Router 4 utiliza historial HTML5 y
 carga cada vista de forma diferida, dentro de un layout compartido con navegación
 adaptable a móvil. Al arrancar recupera el usuario mediante la API y mantiene el
 estado de sesión. Incluye registro, login, logout y guardas de navegación. Las
-consultas de catálogo y favoritos siguen pendientes de los issues #29–#31.
+consultas de catálogo incluyen filtros y paginación. El detalle y los favoritos
+siguen pendientes de los issues #30–#31.
 
 | URL | Vista | Acceso previsto |
 | --- | --- | --- |
-| `/characters` | Catálogo provisional. | Público. |
+| `/characters` | Catálogo con filtros, paginación y estados de carga/error/vacío. | Público. |
 | `/characters/:externalId` | Detalle provisional, identificador entero positivo. | Público. |
 | `/login` | Inicio de sesión y recuperación del destino original. | Invitado. |
 | `/register` | Registro con inicio de sesión automático. | Invitado. |
@@ -119,7 +120,7 @@ de Swagger durante el build no corresponde al bundle de Vue.
 | --- | --- |
 | `app.js`, `bootstrap.js` y `App.vue` | Composición, montaje y recuperación inicial de sesión. |
 | `domains/authentication/` | Componentes, composables, servicios y vistas de registro/login. `index.js` expone el servicio público del dominio. |
-| `domains/characters/views/` | Pantallas diferidas de catálogo y detalle. |
+| `domains/characters/` | Tarjetas, filtros, paginación, consulta de catálogo y vistas diferidas; detalle todavía provisional. |
 | `domains/favorites/views/` | Pantalla diferida de favoritos. |
 | `shared/components/` | Presentación transversal: `BrandMark` y `PagePlaceholder`. |
 | `shared/layouts/` | `MainLayout.vue`: cabecera, navegación, contenido y pie compartidos. |
@@ -142,6 +143,38 @@ colores, tipografía del sistema, foco visible y la escala de espaciado de Tailw
 No se descargan fuentes externas.
 Tailwind registra explícitamente las fuentes Blade, JavaScript y Vue; no escanea
 todo el repositorio ni las vistas compiladas en `storage`.
+
+### Catálogo y búsquedas compartibles
+
+`/characters` consulta `GET /api/characters` mediante el mismo cliente Axios
+configurado en el arranque. No exige una sesión ni consulta directamente al
+proveedor externo. La base debe contener el catálogo sincronizado para mostrar
+personajes; un listado vacío no ejecuta automáticamente la sincronización.
+
+- Aplica nombre, estado, especie y género con «Buscar personajes» o Enter.
+  Los textos se editan localmente hasta enviar, sin peticiones ni entradas de
+  historial por cada tecla. «Limpiar filtros» restablece la búsqueda.
+- Filtros y página se guardan en la query de Vue Router. Recargar, compartir la
+  URL y usar atrás/adelante recupera la consulta. Cambiar filtros vuelve a página 1.
+- Estado y género muestran etiquetas en castellano pero envían los valores del
+  contrato: `Alive`, `Dead`, `unknown`, `Female`, `Male` y `Genderless`.
+  Nombre y especie buscan sobre los textos originales del catálogo.
+- Se admite `per_page` de 1 a 100 en la URL (20 por defecto). Los parámetros
+  desconocidos, repetidos o inválidos se normalizan mediante `replace`, sin
+  añadir otra entrada al historial; los valores predeterminados se omiten.
+- Cada cambio cancela la petición anterior y descarta cualquier respuesta o
+  error obsoleto, aunque el transporte no llegue a cancelarse. Los resultados
+  anteriores se ocultan durante la nueva carga.
+- La navegación usa `links` para habilitar controles y `meta` para páginas y
+  totales. Las URLs recibidas del servidor nunca se siguen directamente: se
+  navega dentro de la SPA y se consulta el endpoint configurado.
+- Se anuncian carga y resultados; los errores ofrecen un reintento manual y las
+  páginas vacías fuera de rango permiten volver a la primera. Las tarjetas
+  incluyen texto alternativo, reserva de espacio y sustituto de imágenes fallidas.
+
+Ejemplo: `/characters?name=Rick&status=Alive&page=2&per_page=7`.
+Las tarjetas enlazan a la ruta de detalle ya existente; su contenido completo
+se implementará en el issue #30.
 
 ### Variables públicas
 

@@ -8,6 +8,8 @@ import { createSession, sessionKey } from '../../resources/js/shared/composables
 import { createApiClient } from '../../resources/js/shared/services/http/createApiClient';
 import { createAuthenticationService } from '../../resources/js/domains/authentication';
 import { deferred, rejectResponse, response } from './support/http';
+import { characterServiceKey } from '../../resources/js/domains/characters';
+import { emptyCharacterService } from './support/characters';
 
 enableAutoUnmount(afterEach);
 beforeEach(() => vi.stubGlobal('scrollTo', vi.fn()));
@@ -27,7 +29,7 @@ async function setup(path = '/login', { authenticated = false, mutation } = {}) 
     const router = createAppRouter(createMemoryHistory());
     installSessionGuards(router, session);
     await router.push(path);
-    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { [sessionKey]: session } } });
+    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { [sessionKey]: session, [characterServiceKey]: emptyCharacterService } } });
     return { wrapper, router, session, adapter };
 }
 
@@ -149,7 +151,7 @@ describe('Cierre de sesión desde el layout', () => {
         await wrapper.get('nav button').trigger('click');
         await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('characters'));
         expect(session.status.value).toBe('guest');
-        expect(wrapper.find('nav button').exists()).toBe(false);
+        expect(wrapper.find('header nav button').exists()).toBe(false);
         expect(wrapper.get('nav a[href="/login"]').text()).toBe('Iniciar sesión');
         expect(adapter.mock.calls.map(([config]) => config.url)).toEqual(['/auth/user', '/auth/csrf-cookie', '/auth/logout']);
         expect(document.activeElement).toBe(wrapper.get('main').element);

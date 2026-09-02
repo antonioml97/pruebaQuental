@@ -5,6 +5,8 @@ import App from '../../resources/js/App.vue';
 import { createAppRouter } from '../../resources/js/router';
 import { createSession, sessionKey } from '../../resources/js/shared/composables/useSession';
 import { ApiError } from '../../resources/js/shared/services/http/ApiError';
+import { characterServiceKey } from '../../resources/js/domains/characters';
+import { emptyCharacterService } from './support/characters';
 
 enableAutoUnmount(afterEach);
 
@@ -21,7 +23,7 @@ async function mountApp(path = '/') {
     await router.isReady();
     const session = createSession({ currentUser: () => Promise.reject(new ApiError({ status: 401, code: 'unauthenticated', message: 'Invitado' })) });
     await session.restore();
-    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { [sessionKey]: session } } });
+    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { [sessionKey]: session, [characterServiceKey]: emptyCharacterService } } });
     return { wrapper, router };
 }
 

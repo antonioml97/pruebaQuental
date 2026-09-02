@@ -62,6 +62,10 @@ export function createSession(authentication) {
         user: readonly(user),
         error: readonly(error),
         isAuthenticated: computed(() => status.value === 'authenticated'),
+        // Las guardas esperan la operación existente y consultan después el estado final.
+        whenIdle() {
+            return (pending ?? Promise.resolve()).catch(() => null);
+        },
         restore(options) {
             if (pendingKind === 'restore') {
                 return pending;

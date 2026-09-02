@@ -32,7 +32,7 @@ describe('Contrato de rutas', () => {
         expect(router.resolve(path).name).toBe('not-found');
     });
 
-    it('no aplica todavía guardas de sesión', async () => {
+    it('permite componer el mapa de rutas independientemente de la sesión', async () => {
         const router = createAppRouter(createMemoryHistory());
         for (const path of ['/favorites', '/login', '/register']) {
             await router.push(path);

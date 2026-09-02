@@ -51,9 +51,33 @@ Para detener los contenedores:
 
 ## Desarrollo del frontend
 
-La entrada `/` sirve una vista Blade mínima que monta `App.vue`. Por ahora muestra
-una bienvenida y el acceso a Swagger: no implementa navegación con Vue Router,
-autenticación, catálogo ni favoritos (issues #26–#31).
+La entrada `/` sirve una vista Blade mínima que monta `App.vue` y redirige al
+catálogo provisional en `/characters`. Vue Router 4 utiliza historial HTML5 y
+carga cada vista de forma diferida, dentro de un layout compartido con navegación
+adaptable a móvil. Todavía no hay formularios, guardas de sesión ni consultas a
+la API: se incorporarán en los issues #27–#31.
+
+| URL | Vista | Acceso previsto |
+| --- | --- | --- |
+| `/characters` | Catálogo provisional. | Público. |
+| `/characters/:externalId` | Detalle provisional, identificador entero positivo. | Público. |
+| `/login` | Inicio de sesión provisional. | Invitado. |
+| `/register` | Registro provisional. | Invitado. |
+| `/favorites` | Favoritos provisionales, sin datos privados. | Autenticado. |
+| Cualquier otra ruta del cliente | Página no encontrada. | Público. |
+
+Los metadatos `title` y `access` centralizan el título y el acceso previsto de
+cada ruta; **todavía no son un control de sesión**. La API mantiene su propia
+autenticación y autorización. El layout actualiza el título del documento y lleva
+el foco al contenido al navegar. Incluye un enlace «Saltar al contenido» y un
+menú móvil con botón nativo, estado `aria-expanded` y cierre mediante Escape.
+
+Laravel entrega el documento de Vue para las consultas GET/HEAD de rutas internas,
+permitiendo abrir enlaces directamente y recargar. Excluye `/api`, `/docs`, `/up`
+y sus descendientes, además de `/build` y `/storage`, para no convertir errores
+de servicios o archivos en HTML de la SPA. Una ruta desconocida del cliente
+recibe el documento HTTP 200 y muestra la página 404 de Vue; las rutas reservadas
+inexistentes conservan su error HTTP (404, o el rechazo de firma del disco privado).
 
 Con Sail en marcha, ejecuta en WSL2:
 
@@ -64,7 +88,7 @@ npm run dev
 
 Abre **http://localhost**, no el puerto 5173: Laravel entrega el HTML y Vite sirve
 los recursos con recarga en caliente (HMR). Un cambio de plantilla en
-`resources/js/views/WelcomeView.vue` debe verse sin recargar manualmente.
+`resources/js/views/CharactersView.vue` debe verse sin recargar manualmente.
 Si no tienes Node en WSL2, usa los mismos scripts dentro de Sail:
 
 ```sh
@@ -92,9 +116,9 @@ de Swagger durante el build no corresponde al bundle de Vue.
 | --- | --- |
 | `app.js` y `App.vue` | Montaje y componente raíz. |
 | `components/` | Piezas de presentación reutilizables, como `BrandMark.vue`. |
-| `views/` | Vistas completas; inicialmente `WelcomeView.vue`. |
-| `layouts/` | Estructura visual compartida de las futuras rutas (#26). |
-| `router/` | Rutas y navegación con Vue Router (#26). |
+| `views/` | Pantallas diferidas de catálogo, detalle, acceso, registro, favoritos y 404. |
+| `layouts/` | `MainLayout.vue`: cabecera, navegación, contenido y pie compartidos. |
+| `router/` | Mapa explícito de rutas, metadatos e historial con Vue Router. |
 | `composables/` | Estado y lógica reactiva reutilizable (#27). |
 | `services/` | Acceso HTTP y adaptación del contrato de la API (#27). |
 
@@ -108,7 +132,7 @@ todo el repositorio ni las vistas compiladas en `storage`.
 
 ### Variables públicas
 
-- `VITE_APP_NAME`: nombre mostrado en la cabecera. `.env.example` lo toma de
+- `VITE_APP_NAME`: nombre de la cabecera y sufijo del título. `.env.example` lo toma de
   `APP_NAME`; si queda vacío, se muestra «Rick and Morty».
 - `APP_URL`: origen de Laravel (por defecto `http://localhost`), configuración del
   servidor, no una variable pública de JavaScript.
@@ -130,8 +154,10 @@ npm run test:watch
 Vitest usa el plugin de Vue y jsdom con Vue Test Utils. Las pruebas se encuentran
 en `tests/Frontend`. Su configuración no carga el plugin Laravel, evitando que
 las pruebas unitarias dependan de PHP, del servidor Vite o de `public/hot`.
-Comprueban el montaje, el nombre público y el enlace independiente a Swagger.
-La prueba PHP de `/` valida el documento Blade sin exigir un build previo.
+Comprueban las rutas, sus metadatos y carga diferida, los títulos, el nombre público,
+los enlaces activos, el menú y el foco. Cada prueba crea un historial en memoria
+independiente. Las pruebas PHP validan enlaces directos, rutas reservadas y métodos
+del fallback sin exigir un build previo. Swagger conserva su entrada independiente.
 
 ## Sincronización del catálogo
 

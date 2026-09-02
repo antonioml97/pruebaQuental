@@ -9,86 +9,62 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Models\AccessToken;
+use App\Services\Authentication\TokenUsageRecorder;
+use App\Services\Authentication\TokenValidator;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Resuelve, compara y comprueba la caducidad de la sesión presentada.
+ * Extrae la cookie y asocia a la petición la sesión resuelta por el validador.
  */
 final class AuthenticateAccessToken
 {
-    /** Minutos mínimos entre actualizaciones de la última utilización. */
-    private const LAST_USED_UPDATE_INTERVAL = 5;
+    /** Validador independiente del transporte de la credencial. */
+    private readonly TokenValidator $tokens;
+
+    /** Registro de actividad separado de la validación del secreto. */
+    private readonly TokenUsageRecorder $usage;
+
+    /**
+     * Recibe la validación de sesiones y el registro separado de actividad.
+     *
+     * @param  TokenValidator  $tokens  Validador de la credencial opaca que no registra actividad.
+     * @param  TokenUsageRecorder  $usage  Registrador de actividad al que se delega solo tras autenticar.
+     */
+    public function __construct(TokenValidator $tokens, TokenUsageRecorder $usage)
+    {
+        $this->tokens = $tokens;
+        $this->usage = $usage;
+    }
 
     /**
      * Asocia el usuario del token válido a la petición actual.
      *
-     * @param  Closure(Request): Response  $next
+     * @param  Request  $request  Petición que transporta la cookie opaca y recibirá el usuario resuelto.
+     * @param  Closure(Request): Response  $next  Siguiente manejador de la cadena, invocado solo si la petición supera el middleware.
      *
      * @throws AuthenticationException Cuando el token falta, es inválido o ha caducado.
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $accessToken = $this->resolveAccessToken($request);
-
-        if (! $accessToken instanceof AccessToken) {
-            throw new AuthenticationException;
-        }
-
-        $request->setUserResolver(static fn () => $accessToken->user);
-        $request->attributes->set(AccessToken::class, $accessToken);
-        $this->recordUsageWhenNecessary($accessToken);
-
-        return $next($request);
-    }
-
-    /**
-     * Resuelve el identificador y compara en tiempo constante el secreto presentado.
-     */
-    private function resolveAccessToken(Request $request): ?AccessToken
-    {
         $cookieName = config('auth_tokens.cookie.name');
         $plainTextToken = is_string($cookieName) ? $request->cookie($cookieName) : null;
+        $accessToken = $this->tokens->validate(is_string($plainTextToken) ? $plainTextToken : null);
 
-        if (! is_string($plainTextToken)) {
-            return null;
+        if (! $accessToken instanceof AccessToken) {
+            throw new AuthenticationException('Es necesario iniciar sesión para acceder a este recurso.');
         }
 
-        [$identifier, $secret] = array_pad(explode('|', $plainTextToken, 2), 2, null);
+        $request->setUserResolver(
+            /**
+             * Expone a Laravel exclusivamente el usuario de la sesión validada.
+             */
+            static fn () => $accessToken->user);
+        $request->attributes->set(AccessToken::class, $accessToken);
+        $this->usage->record($accessToken);
 
-        if (! is_string($identifier)
-            || ! ctype_digit($identifier)
-            || ! is_string($secret)
-            || ! preg_match('/\A[a-f0-9]{64}\z/', $secret)
-        ) {
-            return null;
-        }
-
-        $accessToken = AccessToken::query()->with('user')->find((int) $identifier);
-
-        if (! $accessToken instanceof AccessToken
-            || ! hash_equals($accessToken->token_hash, hash('sha256', $secret))
-            || $accessToken->expires_at->isPast()
-        ) {
-            return null;
-        }
-
-        return $accessToken;
-    }
-
-    /**
-     * Registra actividad sin escribir en la base de datos en cada petición.
-     */
-    private function recordUsageWhenNecessary(AccessToken $accessToken): void
-    {
-        if ($accessToken->last_used_at !== null
-            && $accessToken->last_used_at->isAfter(now()->subMinutes(self::LAST_USED_UPDATE_INTERVAL))
-        ) {
-            return;
-        }
-
-        $accessToken->forceFill(['last_used_at' => now()])->saveQuietly();
+        return $next($request);
     }
 }

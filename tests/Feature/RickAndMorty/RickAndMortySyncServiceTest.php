@@ -207,10 +207,48 @@ final class RickAndMortySyncServiceTest extends TestCase
         } catch (RickAndMortySynchronizationException $exception) {
             $this->assertSame('validation', $exception->stage);
             $this->assertSame('location', $exception->resource);
-            $this->assertStringContainsString('character [1]', $exception->getMessage());
+            $this->assertStringContainsString('El personaje [1]', $exception->getMessage());
         }
 
         $this->assertDatabaseCount('locations', 0);
+        $this->assertDatabaseCount('episodes', 0);
+        $this->assertDatabaseCount('characters', 0);
+        $this->assertDatabaseCount('character_episode', 0);
+    }
+
+    /** Un fallo tardío revierte atributos, recursos y relaciones guardados por otros persistidores. */
+    public function test_a_late_failure_rolls_back_all_entity_persisters(): void
+    {
+        $location = Location::query()->create([
+            'external_id' => 1,
+            'name' => 'Antes',
+            'type' => 'Planet',
+            'dimension' => 'C-137',
+        ]);
+        $client = $this->clientMock();
+        $client->shouldReceive('fetchLocations')->with(1)->once()->andReturn(
+            $this->page(items: [$this->locationData(1, 'Después')]),
+        );
+        $client->shouldReceive('fetchEpisodes')->with(1)->once()->andReturn(
+            $this->page(items: [$this->episodeData(1, 'Pilot', 'S01E01')]),
+        );
+        $client->shouldReceive('fetchCharacters')->with(1)->once()->andReturn(
+            $this->page(items: [
+                $this->characterData(1, 'Rick', null, 1, [1]),
+                $this->characterData(2, 'Morty', null, 1, [999]),
+            ]),
+        );
+
+        try {
+            $this->syncService($client)->synchronize();
+            self::fail('Se esperaba una referencia de episodio inexistente.');
+        } catch (RickAndMortySynchronizationException $exception) {
+            self::assertSame('validation', $exception->stage);
+            self::assertSame('episode', $exception->resource);
+        }
+
+        $this->assertDatabaseHas('locations', ['id' => $location->getKey(), 'name' => 'Antes']);
+        $this->assertDatabaseCount('locations', 1);
         $this->assertDatabaseCount('episodes', 0);
         $this->assertDatabaseCount('characters', 0);
         $this->assertDatabaseCount('character_episode', 0);
@@ -231,12 +269,14 @@ final class RickAndMortySyncServiceTest extends TestCase
 
     /**
      * Construye la composición real manteniendo sustituido únicamente el proveedor externo.
+     *
+     * @param  RickAndMortyClientInterface  $client  Cliente intercambiable del proveedor, sustituible por un doble en pruebas.
      */
     private function syncService(RickAndMortyClientInterface $client): RickAndMortySyncService
     {
         return new RickAndMortySyncService(
             fetcher: new RickAndMortyCatalogFetcher($client),
-            persister: new EloquentRickAndMortyCatalogPersister,
+            persister: $this->app->make(EloquentRickAndMortyCatalogPersister::class),
         );
     }
 
@@ -245,7 +285,12 @@ final class RickAndMortySyncServiceTest extends TestCase
      *
      * @template T
      *
-     * @param  list<T>  $items
+     * @param  list<T>  $items  DTOs de los recursos contenidos en la página.
+     * @param  int  $currentPage  Número de la página representada, comenzando en uno.
+     * @param  int  $totalPages  Número total de páginas declarado por el proveedor.
+     * @param  int|null  $totalItems  Total simulado de recursos; null utiliza el número de elementos de la página.
+     * @param  int|null  $nextPage  Página siguiente o null cuando se alcanza el final.
+     * @param  int|null  $previousPage  Página anterior o null cuando se está en la primera.
      * @return PaginatedResponseData<T>
      */
     private function page(
@@ -268,6 +313,9 @@ final class RickAndMortySyncServiceTest extends TestCase
 
     /**
      * Crea datos externos de una localización.
+     *
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  string  $name  Nombre visible del recurso que se construye para la prueba.
      */
     private function locationData(int $externalId, string $name): LocationData
     {
@@ -281,6 +329,10 @@ final class RickAndMortySyncServiceTest extends TestCase
 
     /**
      * Crea datos externos de un episodio.
+     *
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  string  $name  Nombre visible del recurso que se construye para la prueba.
+     * @param  string  $code  Código del episodio en formato de temporada y número, como S01E01.
      */
     private function episodeData(int $externalId, string $name, string $code): EpisodeData
     {
@@ -295,7 +347,11 @@ final class RickAndMortySyncServiceTest extends TestCase
     /**
      * Crea datos externos de un personaje y sus referencias.
      *
-     * @param  list<int>  $episodeExternalIds
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  string  $name  Nombre visible del recurso que se construye para la prueba.
+     * @param  int|null  $originLocationExternalId  Identificador externo del origen, o null si el proveedor lo desconoce.
+     * @param  int|null  $currentLocationExternalId  Identificador externo de la ubicación actual, o null si se desconoce.
+     * @param  list<int>  $episodeExternalIds  Identificadores externos de los episodios asociados, no claves locales.
      */
     private function characterData(
         int $externalId,

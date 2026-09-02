@@ -66,7 +66,12 @@ final class ModelRelationshipsTest extends TestCase
         $this->assertNull($character->current_location_id);
     }
 
-    /** Crea una localización mínima para las pruebas de relaciones. */
+    /**
+     * Crea una localización mínima para las pruebas de relaciones.
+     *
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  string  $name  Nombre visible del recurso que se construye para la prueba.
+     */
     private function createLocation(int $externalId, string $name): Location
     {
         return Location::query()->create([
@@ -77,7 +82,12 @@ final class ModelRelationshipsTest extends TestCase
         ]);
     }
 
-    /** Crea un personaje mínimo para las pruebas de relaciones. */
+    /**
+     * Crea un personaje mínimo para las pruebas de relaciones.
+     *
+     * @param  Location|null  $origin  Localización local de origen, o null para un origen desconocido.
+     * @param  Location|null  $currentLocation  Localización local actual, o null para una ubicación desconocida.
+     */
     private function createCharacter(?Location $origin = null, ?Location $currentLocation = null): Character
     {
         return Character::query()->create([

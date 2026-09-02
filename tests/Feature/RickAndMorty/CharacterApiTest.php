@@ -8,9 +8,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\RickAndMorty;
 
+use App\Domain\Characters\DTO\CharacterFiltersData;
 use App\Models\Character;
 use App\Models\Episode;
 use App\Models\Location;
+use App\Services\Characters\CharacterQueryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -63,6 +65,45 @@ final class CharacterApiTest extends TestCase
             ->assertJsonPath('meta.total', 3);
 
         $this->assertStringContainsString('per_page=2', $response->json('links.first'));
+    }
+
+    /** Verifica que los enlaces HTTP conservan filtros y tamaño al cambiar de página. */
+    public function test_pagination_links_preserve_filters(): void
+    {
+        $this->createCharacter(['external_id' => 1, 'name' => 'Rick Sanchez']);
+        $this->createCharacter(['external_id' => 2, 'name' => 'Rick Robot']);
+        $this->createCharacter(['external_id' => 3, 'name' => 'Morty Smith']);
+
+        $response = $this->getJson('/api/characters?name=Rick&per_page=1');
+        $response->assertOk()->assertJsonPath('meta.total', 2);
+        $next = $response->json('links.next');
+
+        $this->assertStringContainsString('name=Rick', $next);
+        $this->assertStringContainsString('per_page=1', $next);
+        $this->getJson($next)
+            ->assertOk()
+            ->assertJsonPath('data.0.id', 2)
+            ->assertJsonPath('meta.current_page', 2)
+            ->assertJsonPath('meta.total', 2);
+    }
+
+    /** Verifica que el servicio usa la página explícita y no copia parámetros HTTP. */
+    public function test_query_service_does_not_infer_pagination_from_http(): void
+    {
+        $first = $this->createCharacter(['external_id' => 1]);
+        $second = $this->createCharacter(['external_id' => 2]);
+        $this->app['request']->query->replace(['page' => '99', 'unexpected' => 'ignored']);
+        $filters = new CharacterFiltersData(null, null, null, null, 1);
+        $query = $this->app->make(CharacterQueryService::class);
+
+        $defaultPage = $query->paginate($filters);
+        $explicitPage = $query->paginate($filters, page: 2);
+
+        $this->assertSame(1, $defaultPage->currentPage());
+        $this->assertSame($first->getKey(), $defaultPage->items()[0]->getKey());
+        $this->assertSame(2, $explicitPage->currentPage());
+        $this->assertSame($second->getKey(), $explicitPage->items()[0]->getKey());
+        $this->assertStringNotContainsString('unexpected', $explicitPage->url(1));
     }
 
     /**
@@ -180,7 +221,7 @@ final class CharacterApiTest extends TestCase
     /**
      * Persiste un personaje con valores válidos y atributos personalizables.
      *
-     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $attributes  Atributos de prueba que reemplazan los valores predeterminados del personaje.
      */
     private function createCharacter(array $attributes): Character
     {
@@ -201,6 +242,9 @@ final class CharacterApiTest extends TestCase
 
     /**
      * Persiste una localización identificable desde el contrato público.
+     *
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  string  $name  Nombre visible del recurso que se construye para la prueba.
      */
     private function createLocation(int $externalId, string $name): Location
     {
@@ -214,6 +258,10 @@ final class CharacterApiTest extends TestCase
 
     /**
      * Persiste un episodio con una fecha normalizada.
+     *
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  string  $name  Nombre visible del recurso que se construye para la prueba.
+     * @param  string  $code  Código del episodio en formato de temporada y número, como S01E01.
      */
     private function createEpisode(int $externalId, string $name, string $code): Episode
     {

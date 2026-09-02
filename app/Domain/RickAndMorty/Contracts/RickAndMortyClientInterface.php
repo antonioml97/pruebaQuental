@@ -24,6 +24,7 @@ interface RickAndMortyClientInterface
     /**
      * Obtiene una página de personajes desde la fuente externa.
      *
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
      * @return PaginatedResponseData<CharacterData>
      *
      * @throws InvalidArgumentException Si la página no es positiva.
@@ -35,6 +36,7 @@ interface RickAndMortyClientInterface
     /**
      * Obtiene una página de episodios desde la fuente externa.
      *
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
      * @return PaginatedResponseData<EpisodeData>
      *
      * @throws InvalidArgumentException Si la página no es positiva.
@@ -46,6 +48,7 @@ interface RickAndMortyClientInterface
     /**
      * Obtiene una página de localizaciones desde la fuente externa.
      *
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
      * @return PaginatedResponseData<LocationData>
      *
      * @throws InvalidArgumentException Si la página no es positiva.

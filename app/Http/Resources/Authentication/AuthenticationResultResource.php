@@ -22,6 +22,7 @@ final class AuthenticationResultResource extends JsonResource
     /**
      * Transforma una autenticación satisfactoria al contrato público.
      *
+     * @param  Request  $request  Contexto HTTP recibido por Laravel durante la serialización del recurso.
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

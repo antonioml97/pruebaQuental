@@ -20,30 +20,48 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
-            $table->rememberToken();
-            $table->timestamps();
-        });
+        Schema::create('users',
+            /**
+             * Define columnas, índices y restricciones de la tabla users.
+             *
+             * @param  Blueprint  $table  Definición de users que Laravel convertirá en SQL.
+             */
+            function (Blueprint $table): void {
+                $table->id();
+                $table->string('name');
+                $table->string('email')->unique();
+                $table->timestamp('email_verified_at')->nullable();
+                $table->string('password');
+                $table->rememberToken();
+                $table->timestamps();
+            });
 
-        Schema::create('password_reset_tokens', function (Blueprint $table): void {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
-        });
+        Schema::create('password_reset_tokens',
+            /**
+             * Define columnas, índices y restricciones de la tabla password_reset_tokens.
+             *
+             * @param  Blueprint  $table  Definición de password_reset_tokens que Laravel convertirá en SQL.
+             */
+            function (Blueprint $table): void {
+                $table->string('email')->primary();
+                $table->string('token');
+                $table->timestamp('created_at')->nullable();
+            });
 
-        Schema::create('sessions', function (Blueprint $table): void {
-            $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->longText('payload');
-            $table->integer('last_activity')->index();
-        });
+        Schema::create('sessions',
+            /**
+             * Define columnas, índices y restricciones de la tabla sessions.
+             *
+             * @param  Blueprint  $table  Definición de sessions que Laravel convertirá en SQL.
+             */
+            function (Blueprint $table): void {
+                $table->string('id')->primary();
+                $table->foreignId('user_id')->nullable()->index();
+                $table->string('ip_address', 45)->nullable();
+                $table->text('user_agent')->nullable();
+                $table->longText('payload');
+                $table->integer('last_activity')->index();
+            });
     }
 
     /**

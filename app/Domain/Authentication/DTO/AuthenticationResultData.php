@@ -15,35 +15,25 @@ use DateTimeImmutable;
  */
 final readonly class AuthenticationResultData
 {
-    /** Identificador local del usuario. */
-    public int $userId;
-
-    /** Nombre público del usuario. */
-    public string $name;
-
-    /** Correo del usuario autenticado. */
-    public string $email;
-
-    /** Token opaco que nunca debe formar parte del cuerpo JSON. */
-    public string $plainTextToken;
-
-    /** Momento en que la sesión dejará de ser válida. */
-    public DateTimeImmutable $expiresAt;
-
     /**
      * Crea el resultado de una emisión de token satisfactoria.
+     *
+     * @param  int  $userId  Identificador local del usuario.
+     * @param  string  $name  Nombre público del usuario.
+     * @param  string  $email  Correo del usuario autenticado.
+     * @param  string  $plainTextToken  Token opaco que nunca debe formar parte del cuerpo JSON.
+     * @param  DateTimeImmutable  $expiresAt  Momento en que la sesión dejará de ser válida.
      */
     public function __construct(
-        int $userId,
-        string $name,
-        string $email,
-        string $plainTextToken,
-        DateTimeImmutable $expiresAt,
-    ) {
-        $this->userId = $userId;
-        $this->name = $name;
-        $this->email = $email;
-        $this->plainTextToken = $plainTextToken;
-        $this->expiresAt = $expiresAt;
-    }
+        /** Identificador local del usuario. */
+        public int $userId,
+        /** Nombre público del usuario. */
+        public string $name,
+        /** Correo del usuario autenticado. */
+        public string $email,
+        /** Token opaco que nunca debe formar parte del cuerpo JSON. */
+        public string $plainTextToken,
+        /** Momento en que la sesión dejará de ser válida. */
+        public DateTimeImmutable $expiresAt,
+    ) {}
 }

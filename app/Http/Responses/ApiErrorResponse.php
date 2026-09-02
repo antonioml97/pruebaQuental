@@ -56,6 +56,8 @@ final class ApiErrorResponse
 
     /**
      * Responde al superar el límite de intentos de autenticación.
+     *
+     * @param  int  $retryAfter  Segundos hasta el siguiente intento; la respuesta garantiza al menos uno.
      */
     public static function tooManyRequests(int $retryAfter): JsonResponse
     {
@@ -71,7 +73,7 @@ final class ApiErrorResponse
     /**
      * Responde con los errores producidos por la validación de entrada.
      *
-     * @param  array<string, list<string>>  $errors
+     * @param  array<string, list<string>>  $errors  Mensajes de validación agrupados por nombre de campo.
      */
     public static function validation(array $errors): JsonResponse
     {
@@ -112,8 +114,11 @@ final class ApiErrorResponse
     /**
      * Construye la envoltura estable de cualquier error conocido de la API.
      *
-     * @param  array<string, mixed>  $details
-     * @param  array<string, string>  $headers
+     * @param  string  $code  Código estable que permite al cliente identificar el tipo de error.
+     * @param  string  $message  Mensaje público y seguro que explica el error al cliente.
+     * @param  array<string, mixed>  $details  Contexto público y seguro del error, sin secretos ni trazas internas.
+     * @param  int  $status  Código de estado HTTP que llevará la respuesta pública.
+     * @param  array<string, string>  $headers  Cabeceras adicionales de la respuesta, como Retry-After.
      */
     private static function make(
         string $code,

@@ -44,8 +44,15 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes): array => [
-            'email_verified_at' => null,
-        ]);
+        return $this->state(
+            /**
+             * Sobrescribe únicamente la verificación del correo en los datos de la factoría.
+             *
+             * @param  array<string, mixed>  $attributes  Estado previo de la factoría; se conserva salvo el campo devuelto.
+             * @return array{email_verified_at: null} Atributo que se combina con el estado previo.
+             */
+            fn (array $attributes): array => [
+                'email_verified_at' => null,
+            ]);
     }
 }

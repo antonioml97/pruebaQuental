@@ -13,18 +13,16 @@ namespace App\Domain\Authentication\DTO;
  */
 final readonly class CredentialsData
 {
-    /** Correo normalizado presentado por el usuario. */
-    public string $email;
-
-    /** Contraseña presentada para su comprobación inmediata. */
-    public string $password;
-
     /**
      * Crea unas credenciales ya validadas estructuralmente.
+     *
+     * @param  string  $email  Correo normalizado presentado por el usuario.
+     * @param  string  $password  Contraseña presentada para su comprobación inmediata.
      */
-    public function __construct(string $email, string $password)
-    {
-        $this->email = $email;
-        $this->password = $password;
-    }
+    public function __construct(
+        /** Correo normalizado presentado por el usuario. */
+        public string $email,
+        /** Contraseña presentada para su comprobación inmediata. */
+        public string $password,
+    ) {}
 }

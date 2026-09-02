@@ -19,6 +19,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
 use InvalidArgumentException;
+use LogicException;
 use Tests\TestCase;
 
 /**
@@ -87,11 +88,17 @@ final class RickAndMortyClientTest extends TestCase
 
         $this->assertSame(2, $page->currentPage);
         $this->assertSame(1, $page->previousPage);
-        Http::assertSent(static function (Request $request): bool {
-            return $request->url() === 'https://provider.test/api/character?page=2'
-                && $request['page'] === 2
-                && $request->hasHeader('Accept', 'application/json');
-        });
+        Http::assertSent(
+            /**
+             * Comprueba la página pedida y la cabecera JSON sin acceder a la red.
+             *
+             * @param  Request  $request  Petición saliente capturada por el cliente HTTP simulado.
+             */
+            static function (Request $request): bool {
+                return $request->url() === 'https://provider.test/api/character?page=2'
+                    && $request['page'] === 2
+                    && $request->hasHeader('Accept', 'application/json');
+            });
     }
 
     /**
@@ -104,7 +111,7 @@ final class RickAndMortyClientTest extends TestCase
         ]);
 
         $this->expectException(InvalidRickAndMortyResponseException::class);
-        $this->expectExceptionMessage('[body]');
+        $this->expectExceptionMessage('El campo [body] de la respuesta de Rick and Morty no es válido: debe ser un objeto JSON.');
 
         $this->client->fetchCharacters();
     }
@@ -221,6 +228,7 @@ final class RickAndMortyClientTest extends TestCase
     public function test_it_rejects_a_non_positive_page_without_network_access(): void
     {
         $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('La página solicitada debe ser un entero positivo.');
 
         try {
             $this->client->fetchCharacters(0);
@@ -229,9 +237,35 @@ final class RickAndMortyClientTest extends TestCase
         }
     }
 
+    /** Verifica que una URL de proveedor no válida produce un diagnóstico en castellano. */
+    public function test_invalid_provider_url_uses_a_spanish_message(): void
+    {
+        config(['services.rick_and_morty.url' => 'not-a-url']);
+        Http::preventStrayRequests();
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('La URL configurada para la API de Rick and Morty no es válida.');
+
+        $this->client->fetchCharacters();
+    }
+
+    /** Verifica que las opciones numéricas conservan sus restricciones y se explican en castellano. */
+    public function test_invalid_provider_configuration_uses_a_spanish_message(): void
+    {
+        config(['services.rick_and_morty.timeout' => 0]);
+        Http::preventStrayRequests();
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('La configuración [timeout] de Rick and Morty debe ser un entero mayor o igual que [1].');
+
+        $this->client->fetchCharacters();
+    }
+
     /**
      * Construye una página válida de personajes.
      *
+     * @param  int  $currentPage  Número de la página representada, comenzando en uno.
+     * @param  int  $totalPages  Número total de páginas declarado por el proveedor.
+     * @param  int|null  $nextPage  Página siguiente o null cuando se alcanza el final.
+     * @param  int|null  $previousPage  Página anterior o null cuando se está en la primera.
      * @return array<string, mixed>
      */
     private function characterPage(
@@ -297,7 +331,12 @@ final class RickAndMortyClientTest extends TestCase
     /**
      * Construye metadatos de paginación coherentes con la página solicitada.
      *
-     * @param  list<array<string, mixed>>  $results
+     * @param  list<array<string, mixed>>  $results  Recursos crudos incluidos en la página simulada del proveedor.
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $currentPage  Número de la página representada, comenzando en uno.
+     * @param  int  $totalPages  Número total de páginas declarado por el proveedor.
+     * @param  int|null  $nextPage  Página siguiente o null cuando se alcanza el final.
+     * @param  int|null  $previousPage  Página anterior o null cuando se está en la primera.
      * @return array<string, mixed>
      */
     private function pagePayload(

@@ -20,14 +20,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('favorite_characters', function (Blueprint $table): void {
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('character_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
+        Schema::create('favorite_characters',
+            /**
+             * Define columnas, índices y restricciones de la tabla favorite_characters.
+             *
+             * @param  Blueprint  $table  Definición de favorite_characters que Laravel convertirá en SQL.
+             */
+            function (Blueprint $table): void {
+                $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('character_id')->constrained()->cascadeOnDelete();
+                $table->timestamps();
 
-            $table->primary(['user_id', 'character_id']);
-            $table->index(['user_id', 'created_at']);
-        });
+                $table->primary(['user_id', 'character_id']);
+                $table->index(['user_id', 'created_at']);
+            });
     }
 
     /**

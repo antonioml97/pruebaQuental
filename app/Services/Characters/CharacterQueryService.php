@@ -10,6 +10,7 @@ namespace App\Services\Characters;
 
 use App\Domain\Characters\DTO\CharacterFiltersData;
 use App\Models\Character;
+use App\Models\Episode;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -21,9 +22,11 @@ final class CharacterQueryService
     /**
      * Obtiene una página ordenada de personajes que cumplen los filtros.
      *
+     * @param  CharacterFiltersData  $filters  Criterios ya validados, incluidos los límites de paginación.
+     * @param  int  $page  Página solicitada explícitamente, comenzando en uno.
      * @return LengthAwarePaginator<int, Character>
      */
-    public function paginate(CharacterFiltersData $filters): LengthAwarePaginator
+    public function paginate(CharacterFiltersData $filters, int $page = 1): LengthAwarePaginator
     {
         $query = Character::query();
 
@@ -45,12 +48,13 @@ final class CharacterQueryService
 
         return $query
             ->orderBy('external_id')
-            ->paginate($filters->perPage)
-            ->withQueryString();
+            ->paginate(perPage: $filters->perPage, page: $page);
     }
 
     /**
      * Obtiene un personaje por su identificador público con todo su detalle.
+     *
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
      */
     public function findByExternalId(int $externalId): Character
     {
@@ -58,8 +62,15 @@ final class CharacterQueryService
             ->with([
                 'origin',
                 'currentLocation',
-                'episodes' => static fn (BelongsToMany $relation): BelongsToMany => $relation
-                    ->orderBy('episodes.external_id'),
+                'episodes' =>
+                    /**
+                     * Mantiene un orden estable de episodios dentro del detalle.
+                     *
+                     * @param  BelongsToMany<Episode, Character>  $relation  Relación del personaje sobre la que se aplica el orden.
+                     * @return BelongsToMany<Episode, Character> Relación ordenada por el identificador externo del episodio.
+                     */
+                    static fn (BelongsToMany $relation): BelongsToMany => $relation
+                        ->orderBy('episodes.external_id'),
             ])
             ->where('external_id', $externalId)
             ->firstOrFail();

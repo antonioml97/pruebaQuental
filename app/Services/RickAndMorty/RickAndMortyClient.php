@@ -15,9 +15,11 @@ use App\Domain\RickAndMorty\Contracts\RickAndMortyClientInterface;
 use App\Domain\RickAndMorty\DTO\PaginatedResponseData;
 use App\Domain\RickAndMorty\Exceptions\InvalidRickAndMortyResponseException;
 use App\Domain\RickAndMorty\Exceptions\RickAndMortyRequestException;
-use Closure;
+use App\Services\RickAndMorty\Mapping\CharacterResponseMapper;
+use App\Services\RickAndMorty\Mapping\EpisodeResponseMapper;
+use App\Services\RickAndMorty\Mapping\LocationResponseMapper;
+use App\Services\RickAndMorty\Mapping\PaginatedResponseMapper;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
@@ -41,22 +43,32 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
     /** Espera predeterminada entre intentos, en milisegundos. */
     private const DEFAULT_RETRY_SLEEP_MILLISECONDS = 100;
 
-    /** Códigos HTTP recuperables que no pertenecen al rango de errores de servidor. */
-    private const RETRYABLE_STATUS_CODES = [408, 429];
-
-    /** Límite de seguridad para una espera indicada por el proveedor, en segundos. */
-    private const MAX_RETRY_AFTER_SECONDS = 60;
-
     /**
-     * Crea el cliente con el transformador del proveedor.
+     * Recibe los transformadores de recursos, paginación y política de reintentos.
+     *
+     * @param  CharacterResponseMapper  $characters  Traductor de los campos y referencias externos de personajes.
+     * @param  EpisodeResponseMapper  $episodes  Traductor de episodios y sus fechas de emisión.
+     * @param  LocationResponseMapper  $locations  Traductor de localizaciones que conserva los campos vacíos válidos.
+     * @param  PaginatedResponseMapper  $pages  Validador de metadatos que compone la página de DTOs.
+     * @param  RetryPolicy  $retryPolicy  Política que decide qué fallos reintentar y cuánto esperar.
      */
     public function __construct(
-        private readonly RickAndMortyResponseMapper $mapper,
+        /** Transformador de personajes. */
+        private readonly CharacterResponseMapper $characters,
+        /** Transformador de episodios. */
+        private readonly EpisodeResponseMapper $episodes,
+        /** Transformador de localizaciones. */
+        private readonly LocationResponseMapper $locations,
+        /** Transformador común de páginas. */
+        private readonly PaginatedResponseMapper $pages,
+        /** Política de errores recuperables y esperas. */
+        private readonly RetryPolicy $retryPolicy,
     ) {}
 
     /**
      * Obtiene y valida una página de personajes.
      *
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
      * @return PaginatedResponseData<CharacterData>
      *
      * @throws InvalidArgumentException
@@ -65,16 +77,17 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
      */
     public function fetchCharacters(int $page = 1): PaginatedResponseData
     {
-        return $this->fetchPage(
-            resource: 'character',
-            page: $page,
-            mapper: $this->mapper->mapCharacterPage(...),
+        return $this->pages->map(
+            $this->fetchPage('character', $page),
+            $page,
+            $this->characters->map(...),
         );
     }
 
     /**
      * Obtiene y valida una página de episodios.
      *
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
      * @return PaginatedResponseData<EpisodeData>
      *
      * @throws InvalidArgumentException
@@ -83,16 +96,17 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
      */
     public function fetchEpisodes(int $page = 1): PaginatedResponseData
     {
-        return $this->fetchPage(
-            resource: 'episode',
-            page: $page,
-            mapper: $this->mapper->mapEpisodePage(...),
+        return $this->pages->map(
+            $this->fetchPage('episode', $page),
+            $page,
+            $this->episodes->map(...),
         );
     }
 
     /**
      * Obtiene y valida una página de localizaciones.
      *
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
      * @return PaginatedResponseData<LocationData>
      *
      * @throws InvalidArgumentException
@@ -101,29 +115,28 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
      */
     public function fetchLocations(int $page = 1): PaginatedResponseData
     {
-        return $this->fetchPage(
-            resource: 'location',
-            page: $page,
-            mapper: $this->mapper->mapLocationPage(...),
+        return $this->pages->map(
+            $this->fetchPage('location', $page),
+            $page,
+            $this->locations->map(...),
         );
     }
 
     /**
-     * Ejecuta una petición paginada y delega la traducción de su contenido.
+     * Obtiene el objeto JSON de una página sin transformar entidades.
      *
-     * @template T
-     *
-     * @param  Closure(array<string, mixed>, int): PaginatedResponseData<T>  $mapper
-     * @return PaginatedResponseData<T>
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
+     * @return array<string, mixed>
      *
      * @throws InvalidArgumentException
      * @throws InvalidRickAndMortyResponseException
      * @throws RickAndMortyRequestException
      */
-    private function fetchPage(string $resource, int $page, Closure $mapper): PaginatedResponseData
+    private function fetchPage(string $resource, int $page): array
     {
         if ($page < 1) {
-            throw new InvalidArgumentException('The requested page must be a positive integer.');
+            throw new InvalidArgumentException('La página solicitada debe ser un entero positivo.');
         }
 
         try {
@@ -140,16 +153,19 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
 
         if (! is_array($payload)) {
             throw new InvalidRickAndMortyResponseException(
-                'Invalid Rick and Morty response field [body]: must be a JSON object.',
+                'El campo [body] de la respuesta de Rick and Morty no es válido: debe ser un objeto JSON.',
             );
         }
 
         /** @var array<string, mixed> $payload */
-        return $mapper($payload, $page);
+        return $payload;
     }
 
     /**
      * Configura y envía una petición HTTP con reintentos limitados.
+     *
+     * @param  string  $resource  Nombre del recurso del proveedor implicado en la operación.
+     * @param  int  $page  Número de página del proveedor, comenzando en uno.
      *
      * @throws ConnectionException
      */
@@ -164,54 +180,21 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
             ))
             ->retry(
                 $this->positiveConfiguration('retry_times', self::DEFAULT_RETRY_TIMES),
-                fn (int $attempt, Throwable $exception): int => $this->retryDelayMilliseconds($exception),
-                fn (Throwable $exception): bool => $this->shouldRetry($exception),
+                /**
+                 * Calcula la espera antes de repetir una petición al proveedor.
+                 *
+                 * @param  int  $attempt  Número de intento facilitado por Laravel; la política no usa espera exponencial.
+                 * @param  Throwable  $exception  Fallo del intento actual, incluido Retry-After cuando exista.
+                 * @return int Espera en milisegundos antes del siguiente intento.
+                 */
+                fn (int $attempt, Throwable $exception): int => $this->retryPolicy->delayMilliseconds(
+                    $exception,
+                    $this->nonNegativeConfiguration('retry_sleep_milliseconds', self::DEFAULT_RETRY_SLEEP_MILLISECONDS),
+                ),
+                $this->retryPolicy->shouldRetry(...),
                 throw: false,
             )
             ->get($resource, ['page' => $page]);
-    }
-
-    /**
-     * Respeta `Retry-After` para límites HTTP 429 y usa la espera configurada en el resto.
-     */
-    private function retryDelayMilliseconds(Throwable $exception): int
-    {
-        $configuredDelay = $this->nonNegativeConfiguration(
-            'retry_sleep_milliseconds',
-            self::DEFAULT_RETRY_SLEEP_MILLISECONDS,
-        );
-
-        if (! $exception instanceof RequestException || $exception->response->status() !== 429) {
-            return $configuredDelay;
-        }
-
-        $retryAfter = filter_var(
-            $exception->response->header('Retry-After'),
-            FILTER_VALIDATE_INT,
-        );
-
-        if (! is_int($retryAfter) || $retryAfter < 1) {
-            return $configuredDelay;
-        }
-
-        return min($retryAfter, self::MAX_RETRY_AFTER_SECONDS) * 1000;
-    }
-
-    /**
-     * Determina si un fallo es temporal y admite otro intento.
-     */
-    private function shouldRetry(Throwable $exception): bool
-    {
-        if ($exception instanceof ConnectionException) {
-            return true;
-        }
-
-        if (! $exception instanceof RequestException) {
-            return false;
-        }
-
-        return $exception->response->serverError()
-            || in_array($exception->response->status(), self::RETRYABLE_STATUS_CODES, true);
     }
 
     /**
@@ -229,7 +212,7 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
             || filter_var($url, FILTER_VALIDATE_URL) === false
             || ! in_array($scheme, ['http', 'https'], true)
         ) {
-            throw new LogicException('The Rick and Morty API URL configuration is invalid.');
+            throw new LogicException('La URL configurada para la API de Rick and Morty no es válida.');
         }
 
         return rtrim($url, '/');
@@ -237,6 +220,9 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
 
     /**
      * Obtiene un entero positivo desde la configuración del proveedor.
+     *
+     * @param  string  $key  Nombre de la opción dentro de services.rick_and_morty.
+     * @param  int  $default  Valor de respaldo cuando la clave no está configurada; se valida con el mismo mínimo.
      *
      * @throws LogicException Si el valor configurado no es un entero positivo.
      */
@@ -248,6 +234,9 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
     /**
      * Obtiene un entero no negativo desde la configuración del proveedor.
      *
+     * @param  string  $key  Nombre de la opción dentro de services.rick_and_morty.
+     * @param  int  $default  Valor de respaldo cuando la clave no está configurada; se valida con el mismo mínimo.
+     *
      * @throws LogicException Si el valor configurado es negativo o no es entero.
      */
     private function nonNegativeConfiguration(string $key, int $default): int
@@ -258,6 +247,10 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
     /**
      * Obtiene un entero configurado respetando su valor mínimo.
      *
+     * @param  string  $key  Nombre de la opción dentro de services.rick_and_morty.
+     * @param  int  $default  Valor de respaldo cuando la clave no está configurada; se valida con el mismo mínimo.
+     * @param  int  $minimum  Límite inferior inclusivo admitido para el entero configurado.
+     *
      * @throws LogicException Si el valor configurado no respeta el contrato.
      */
     private function integerConfiguration(string $key, int $default, int $minimum): int
@@ -267,7 +260,7 @@ final class RickAndMortyClient implements RickAndMortyClientInterface
 
         if (! is_int($integer) || $integer < $minimum) {
             throw new LogicException(
-                "The Rick and Morty [$key] configuration must be an integer greater than or equal to [$minimum].",
+                "La configuración [$key] de Rick and Morty debe ser un entero mayor o igual que [$minimum].",
             );
         }
 

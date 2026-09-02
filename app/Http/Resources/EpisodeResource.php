@@ -22,6 +22,7 @@ final class EpisodeResource extends JsonResource
     /**
      * Transforma un episodio al contrato público de la API.
      *
+     * @param  Request  $request  Contexto HTTP recibido por Laravel durante la serialización del recurso.
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

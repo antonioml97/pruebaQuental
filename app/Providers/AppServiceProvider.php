@@ -42,14 +42,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        RateLimiter::for('authentication', static function (Request $request): array {
-            $email = mb_strtolower(trim((string) $request->input('email')));
-            $ipAddress = $request->ip() ?? 'unknown';
+        RateLimiter::for('authentication',
+            /**
+             * Combina límites por IP y por correo normalizado e IP.
+             *
+             * @param  Request  $request  Petición de registro o acceso de la que se obtienen correo e IP.
+             * @return list<Limit> Límites independientes que debe respetar la petición.
+             */
+            static function (Request $request): array {
+                $email = mb_strtolower(trim((string) $request->input('email')));
+                $ipAddress = $request->ip() ?? 'unknown';
 
-            return [
-                Limit::perMinute(10)->by('authentication-ip|'.$ipAddress),
-                Limit::perMinute(5)->by('authentication-identity|'.$email.'|'.$ipAddress),
-            ];
-        });
+                return [
+                    Limit::perMinute(10)->by('authentication-ip|'.$ipAddress),
+                    Limit::perMinute(5)->by('authentication-identity|'.$email.'|'.$ipAddress),
+                ];
+            });
     }
 }

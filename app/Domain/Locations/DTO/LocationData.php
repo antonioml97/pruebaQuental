@@ -13,24 +13,22 @@ namespace App\Domain\Locations\DTO;
  */
 final readonly class LocationData
 {
-    /** Identificador externo asignado por el proveedor. */
-    public int $externalId;
-
-    /** Nombre visible de la localización. */
-    public string $name;
-
-    /** Tipo de localización definido por el proveedor. */
-    public string $type;
-
-    /** Dimensión que contiene la localización. */
-    public string $dimension;
-
-    /** Crea una representación inmutable de una localización. */
-    public function __construct(int $externalId, string $name, string $type, string $dimension)
-    {
-        $this->externalId = $externalId;
-        $this->name = $name;
-        $this->type = $type;
-        $this->dimension = $dimension;
-    }
+    /**
+     * Crea una representación inmutable de una localización.
+     *
+     * @param  int  $externalId  Identificador externo asignado por el proveedor.
+     * @param  string  $name  Nombre visible de la localización.
+     * @param  string  $type  Tipo de localización definido por el proveedor.
+     * @param  string  $dimension  Dimensión que contiene la localización.
+     */
+    public function __construct(
+        /** Identificador externo asignado por el proveedor. */
+        public int $externalId,
+        /** Nombre visible de la localización. */
+        public string $name,
+        /** Tipo de localización definido por el proveedor. */
+        public string $type,
+        /** Dimensión que contiene la localización. */
+        public string $dimension,
+    ) {}
 }

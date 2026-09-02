@@ -21,16 +21,24 @@ final class CharacterController extends Controller
 {
     /**
      * Devuelve un listado paginado conforme a los filtros validados.
+     *
+     * @param  CharacterIndexRequest  $request  Petición con filtros y paginación ya validados.
+     * @param  CharacterQueryService  $query  Consulta del catálogo local, sin peticiones al proveedor externo.
      */
     public function index(
         CharacterIndexRequest $request,
         CharacterQueryService $query,
     ): PaginatedCharacterCollection {
-        return new PaginatedCharacterCollection($query->paginate($request->filters()));
+        return (new PaginatedCharacterCollection(
+            $query->paginate(filters: $request->filters(), page: $request->page()),
+        ))->preserveQuery();
     }
 
     /**
      * Devuelve el detalle identificado por el ID público del proveedor.
+     *
+     * @param  string  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
+     * @param  CharacterQueryService  $query  Consulta del catálogo local, sin peticiones al proveedor externo.
      */
     public function show(string $externalId, CharacterQueryService $query): CharacterDetailResource
     {

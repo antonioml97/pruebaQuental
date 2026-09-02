@@ -33,17 +33,20 @@ final class SyncRickAndMortyCommand extends Command implements Isolatable
 
     /**
      * Ejecuta la sincronización y devuelve un código de salida coherente.
+     *
+     * @param  RickAndMortySyncService  $service  Caso de uso que descarga y guarda el catálogo completo.
      */
     public function handle(RickAndMortySyncService $service): int
     {
         $result = null;
 
-        /** Ejecuta la operación que el componente visual representa como una tarea. */
-        $synchronize = function () use ($service, &$result): bool {
-            $result = $service->synchronize();
+        $synchronize =
+            /** Ejecuta la operación que el componente visual representa como una tarea. */
+            function () use ($service, &$result): bool {
+                $result = $service->synchronize();
 
-            return true;
-        };
+                return true;
+            };
 
         try {
             $this->components->task('Sincronizando Rick and Morty', $synchronize);
@@ -79,6 +82,8 @@ final class SyncRickAndMortyCommand extends Command implements Isolatable
 
     /**
      * Muestra el contexto del error sin exponer la respuesta ni detalles internos.
+     *
+     * @param  RickAndMortySynchronizationException  $exception  Fallo con etapa, recurso y página para informar sin exponer detalles internos.
      */
     private function displayFailure(RickAndMortySynchronizationException $exception): void
     {

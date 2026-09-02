@@ -10,6 +10,7 @@ namespace Tests\Feature\Favorites;
 
 use App\Models\Character;
 use App\Models\User;
+use App\Services\Favorites\ListFavoritesService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -79,6 +80,30 @@ final class FavoriteCharacterApiTest extends TestCase
         $this->getJson('/api/favorites?per_page=1&page=2')
             ->assertOk()
             ->assertJsonPath('data.0.id', 1);
+    }
+
+    /** Verifica que la paginación explícita conserva el aislamiento sin copiar la consulta HTTP. */
+    public function test_listing_service_does_not_infer_pagination_from_http(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $first = $this->createCharacter(1);
+        $second = $this->createCharacter(2);
+        $other = $this->createCharacter(3);
+        $user->favoriteCharacters()->attach([$first->getKey(), $second->getKey()]);
+        $otherUser->favoriteCharacters()->attach($other);
+        $this->app['request']->query->replace(['page' => '99', 'unexpected' => 'ignored']);
+        $service = $this->app->make(ListFavoritesService::class);
+
+        $defaultPage = $service->paginate($user, perPage: 1);
+        $explicitPage = $service->paginate($user, perPage: 1, page: 2);
+
+        $this->assertSame(1, $defaultPage->currentPage());
+        $this->assertSame($first->getKey(), $defaultPage->items()[0]->getKey());
+        $this->assertSame(2, $explicitPage->currentPage());
+        $this->assertSame(2, $explicitPage->total());
+        $this->assertSame($second->getKey(), $explicitPage->items()[0]->getKey());
+        $this->assertStringNotContainsString('unexpected', $explicitPage->url(1));
     }
 
     /**
@@ -196,6 +221,8 @@ final class FavoriteCharacterApiTest extends TestCase
 
     /**
      * Configura una cookie opaca válida para el usuario indicado.
+     *
+     * @param  User  $user  Usuario local al que pertenece la operación; no se consultan otras cuentas.
      */
     private function authenticateAs(User $user): self
     {
@@ -224,6 +251,8 @@ final class FavoriteCharacterApiTest extends TestCase
 
     /**
      * Persiste un personaje identificable mediante la API pública.
+     *
+     * @param  int  $externalId  Identificador público del proveedor, no la clave local de Eloquent.
      */
     private function createCharacter(int $externalId): Character
     {

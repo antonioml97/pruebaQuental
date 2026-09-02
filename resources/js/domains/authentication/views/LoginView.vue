@@ -6,7 +6,11 @@ import { loginDestination } from '../../../router/sessionGuards';
 
 const route = useRoute();
 const router = useRouter();
-const { values, fields, errors, message, busy, csrfExpired, submit } = useAuthenticationForm(
+const fields = [
+    { name: 'email', label: 'Correo electrónico', type: 'email', autocomplete: 'email', maxlength: 255 },
+    { name: 'password', label: 'Contraseña', type: 'password', autocomplete: 'current-password', maxlength: 72, hint: '' },
+];
+const { values, errors, message, busy, csrfExpired, submit } = useAuthenticationForm(
     'login', () => router.replace(loginDestination(route.query.redirect, router)),
 );
 </script>

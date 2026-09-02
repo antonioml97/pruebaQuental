@@ -4,7 +4,14 @@ import AuthenticationForm from '../components/AuthenticationForm.vue';
 import { useAuthenticationForm } from '../composables/useAuthenticationForm';
 
 const router = useRouter();
-const { values, fields, errors, message, busy, csrfExpired, submit } = useAuthenticationForm(
+const fields = [
+    { name: 'name', label: 'Nombre', type: 'text', autocomplete: 'name', maxlength: 255 },
+    { name: 'email', label: 'Correo electrónico', type: 'email', autocomplete: 'email', maxlength: 255 },
+    { name: 'password', label: 'Contraseña', type: 'password', autocomplete: 'new-password', maxlength: 72,
+        hint: 'Entre 8 y 72 caracteres, con mayúsculas, minúsculas y números.' },
+    { name: 'password_confirmation', label: 'Repetir contraseña', type: 'password', autocomplete: 'new-password', maxlength: 72 },
+];
+const { values, errors, message, busy, csrfExpired, submit } = useAuthenticationForm(
     'register', () => router.replace({ name: 'characters' }),
 );
 </script>

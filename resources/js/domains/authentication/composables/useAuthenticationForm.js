@@ -14,13 +14,6 @@ export function useAuthenticationForm(kind, onSuccess) {
     const pending = ref(false);
     const csrfExpired = ref(false);
     const busy = computed(() => pending.value || session.status.value === 'loading');
-    const fields = [
-        ...(registration ? [{ name: 'name', label: 'Nombre', type: 'text', autocomplete: 'name', maxlength: 255 }] : []),
-        { name: 'email', label: 'Correo electrónico', type: 'email', autocomplete: 'email', maxlength: 255 },
-        { name: 'password', label: 'Contraseña', type: 'password', autocomplete: registration ? 'new-password' : 'current-password', maxlength: 72,
-            hint: registration ? 'Entre 8 y 72 caracteres, con mayúsculas, minúsculas y números.' : '' },
-        ...(registration ? [{ name: 'password_confirmation', label: 'Repetir contraseña', type: 'password', autocomplete: 'new-password', maxlength: 72 }] : []),
-    ];
 
     // No se cancela una escritura al navegar: abortar no desharía una cookie ya emitida.
     onBeforeRouteLeave(() => !pending.value);
@@ -62,5 +55,5 @@ export function useAuthenticationForm(kind, onSuccess) {
         if (succeeded) await onSuccess();
     }
 
-    return { values, fields, errors, message, pending, busy, csrfExpired, submit };
+    return { values, errors, message, pending, busy, csrfExpired, submit };
 }

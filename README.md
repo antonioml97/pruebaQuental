@@ -54,8 +54,9 @@ Para detener los contenedores:
 La entrada `/` sirve una vista Blade mínima que monta `App.vue` y redirige al
 catálogo provisional en `/characters`. Vue Router 4 utiliza historial HTML5 y
 carga cada vista de forma diferida, dentro de un layout compartido con navegación
-adaptable a móvil. Todavía no hay formularios, guardas de sesión ni consultas a
-la API: se incorporarán en los issues #27–#31.
+adaptable a móvil. Al arrancar recupera el usuario mediante la API y mantiene el
+estado de sesión. Todavía no hay formularios, guardas de rutas ni consultas de
+catálogo o favoritos: se incorporarán en los issues #28–#31.
 
 | URL | Vista | Acceso previsto |
 | --- | --- | --- |
@@ -114,13 +115,14 @@ de Swagger durante el build no corresponde al bundle de Vue.
 
 | Ubicación bajo `resources/js` | Responsabilidad |
 | --- | --- |
-| `app.js` y `App.vue` | Montaje y componente raíz. |
+| `app.js`, `bootstrap.js` y `App.vue` | Composición, montaje y recuperación inicial de sesión. |
 | `components/` | Piezas de presentación reutilizables, como `BrandMark.vue`. |
 | `views/` | Pantallas diferidas de catálogo, detalle, acceso, registro, favoritos y 404. |
 | `layouts/` | `MainLayout.vue`: cabecera, navegación, contenido y pie compartidos. |
 | `router/` | Mapa explícito de rutas, metadatos e historial con Vue Router. |
-| `composables/` | Estado y lógica reactiva reutilizable (#27). |
-| `services/` | Acceso HTTP y adaptación del contrato de la API (#27). |
+| `composables/useSession.js` | Sesión reactiva compartida mediante provide/inject, sin Pinia. |
+| `services/http/` | Instancia Axios y normalización de errores/cancelaciones. |
+| `services/authentication/` | CSRF, registro, login, usuario actual y logout. |
 
 Las carpetas previstas se crearán al incorporar su primer módulo; no se añaden
 archivos vacíos ni implementaciones ficticias. Los componentes usan Composition
@@ -134,13 +136,15 @@ todo el repositorio ni las vistas compiladas en `storage`.
 
 - `VITE_APP_NAME`: nombre de la cabecera y sufijo del título. `.env.example` lo toma de
   `APP_NAME`; si queda vacío, se muestra «Rick and Morty».
+- `VITE_API_BASE_URL`: URL base pública de la API, `/api` por defecto. Incluye el
+  prefijo de API, no el de un endpoint. No debe contener credenciales ni secretos.
 - `APP_URL`: origen de Laravel (por defecto `http://localhost`), configuración del
   servidor, no una variable pública de JavaScript.
 - `FRONTEND_URL`: origen permitido por CORS si se utiliza un cliente separado.
   El puerto de Vite sirve recursos; no cambia el origen de la SPA entregada por Laravel.
 
-No se necesita una URL pública de API en esta entrega porque todavía no hay
-peticiones desde Vue. Todo valor con prefijo `VITE_` queda expuesto en el cliente:
+El valor relativo `/api` conserva el origen de Laravel y evita CORS en la instalación
+habitual. Todo valor con prefijo `VITE_` queda expuesto en el cliente:
 **nunca incluyas contraseñas, tokens ni claves privadas**. Reinicia Vite o vuelve a
 compilar después de cambiar estas variables.
 
@@ -158,6 +162,10 @@ Comprueban las rutas, sus metadatos y carga diferida, los títulos, el nombre p�
 los enlaces activos, el menú y el foco. Cada prueba crea un historial en memoria
 independiente. Las pruebas PHP validan enlaces directos, rutas reservadas y métodos
 del fallback sin exigir un build previo. Swagger conserva su entrada independiente.
+El cliente HTTP se comprueba con adaptadores Axios simulados y un transporte XHR
+simulado para verificar la cabecera CSRF y `withCredentials`. Las pruebas de
+sesión cubren éxito, 401, 419, 422, errores de red, cancelación y concurrencia;
+las de arranque no requieren cuentas reales ni conexión al backend.
 
 ## Sincronización del catálogo
 
@@ -202,25 +210,60 @@ npm run build
 
 ## Uso desde Vue y Axios
 
-El futuro cliente Vue debe permitir credenciales y preparar el CSRF antes de
-modificar estado. Si se sirve desde otro origen, `FRONTEND_URL` debe coincidir
-exactamente con su URL:
+El cliente explícito de `services/http` utiliza `withCredentials: true`,
+`withXSRFToken: true`, `Accept: application/json` y un timeout de 10 segundos.
+Solo admite destinos dentro de la base configurada, evitando enviar la cabecera
+CSRF por accidente a otra URL. No se instala Axios en `window`.
+
+El servicio de autenticación solicita `GET /api/auth/csrf-cookie` antes de cada
+registro, login o logout; las lecturas de usuario no necesitan CSRF. Solo devuelve
+los campos públicos `id`, `name` y `email`. La cookie de autenticación permanece
+en el navegador, inaccesible a JavaScript; no hay renovación de tokens.
+
+`bootstrap.js` crea una sesión por aplicación y la proporciona a las vistas.
+Monta la pantalla sin esperar a la red e inicia `GET /api/auth/user`. `useSession()`
+expone referencias de solo lectura `status` (`loading`, `authenticated`, `guest`),
+`user`, `error` e `isAuthenticated`, además de `restore`, `login`, `register` y `logout`.
+
+- Un 401 de restauración o logout deja el estado como invitado sin bucles. El 401
+  de login conserva el mensaje de credenciales incorrectas.
+- Otros errores conservan la identidad anterior, si la había, y quedan disponibles
+  en `session.error`; una avería de red no demuestra que la cookie haya caducado.
+- Las restauraciones simultáneas comparten la petición. Mientras hay una operación
+  pendiente, otra operación de sesión se rechaza con `session_busy`, evitando
+  respuestas que compitan por la cookie. La futura UI deberá respetar `loading`.
+- Se aceptan opciones `{ signal }` con `AbortController`. Cancelar no cierra la sesión
+  ni garantiza deshacer una escritura que ya llegó al servidor; `restore()` permite
+  reconciliar el estado. La señal de la primera restauración controla la petición compartida.
+- No se usan localStorage, sessionStorage ni un almacén de tokens. Un fallo de arranque
+  queda en `session.error`; se puede reintentar explícitamente con `restore()`.
+
+Ejemplo de uso dentro del `setup` de una futura pantalla (todavía no hay formularios):
 
 ```js
-import axios from 'axios';
+import { useSession } from '../composables/useSession';
 
-const api = axios.create({
-  baseURL: 'http://localhost/api',
-  withCredentials: true,
-  withXSRFToken: true,
-});
-
-await api.get('/auth/csrf-cookie');
-await api.post('/auth/login', {
-  email: 'morty@example.com',
-  password: 'Portal123',
-});
+const session = useSession();
+// Tras comprobar que session.status.value no es 'loading':
+try {
+  await session.login({ email, password });
+} catch (error) {
+  // error.details.email conserva los mensajes por campo de un 422.
+  // error.code distingue credenciales incorrectas, CSRF, red, etc.
+}
 ```
+
+El error HTTP normalizado conserva `code`, `message`, `details`, `status`, `data`
+y `headers` (por ejemplo, `Retry-After`), pero no la configuración de la petición
+que podría contener una contraseña. Las cancelaciones permanecen identificables
+con `isRequestCancelled`. Ni un 401 ni un 419 provocan reenvíos automáticos de
+mutaciones; cada consumidor recibe el error para decidir cómo presentarlo.
+
+Para un cliente separado, `FRONTEND_URL` debe coincidir con su origen permitido.
+La configuración CORS por sí sola no comparte cookies entre dominios: la SPA
+necesita poder leer la cookie CSRF del backend. La instalación soportada sirve
+ambos desde Laravel; si se separan dominios, es necesario un proxy de mismo origen
+o revisar expresamente el alcance y las políticas de cookies del despliegue.
 
 En producción se debe usar HTTPS y configurar al menos:
 

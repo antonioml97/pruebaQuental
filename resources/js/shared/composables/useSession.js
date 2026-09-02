@@ -62,6 +62,13 @@ export function createSession(authentication) {
         user: readonly(user),
         error: readonly(error),
         isAuthenticated: computed(() => status.value === 'authenticated'),
+        // Un 401 de una operación privada vigente confirma la pérdida de sesión.
+        expire() {
+            if (status.value !== 'authenticated') return;
+            user.value = null;
+            status.value = 'guest';
+            error.value = { code: 'session_expired', status: 401, message: 'Tu sesión ha caducado. Inicia sesión de nuevo.' };
+        },
         // Las guardas esperan la operación existente y consultan después el estado final.
         whenIdle() {
             return (pending ?? Promise.resolve()).catch(() => null);

@@ -4,6 +4,8 @@ import CharacterCard from '../components/CharacterCard.vue';
 import CharacterFilters from '../components/CharacterFilters.vue';
 import CharacterPagination from '../components/CharacterPagination.vue';
 import { useCharacterCatalog } from '../composables/useCharacterCatalog';
+import FavoriteButton from '../../favorites/components/FavoriteButton.vue';
+import FavoriteNotice from '../../favorites/components/FavoriteNotice.vue';
 
 const { criteria, result, loading, error, applyFilters, changePage, retry } = useCharacterCatalog();
 const errorDetails = computed(() => Object.values(error.value?.details ?? {}).flat().filter((item) => typeof item === 'string'));
@@ -18,6 +20,7 @@ const announcement = computed(() => loading.value ? 'Cargando personajes…'
         <p class="mt-4 max-w-2xl text-base leading-relaxed text-muted">Encuentra personajes del catálogo sincronizado. Filtra por nombre, estado, especie o género y comparte tu búsqueda desde la URL.</p>
         <CharacterFilters :criteria="criteria" @apply="applyFilters" />
         <p role="status" aria-live="polite" aria-atomic="true" class="mt-6 text-sm font-medium text-muted">{{ announcement }}</p>
+        <FavoriteNotice />
         <div id="character-results" :aria-busy="loading" class="mt-4">
             <div v-if="loading" aria-hidden="true" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <div v-for="index in 3" :key="index" class="h-80 rounded-2xl border border-line bg-brand-100 motion-safe:animate-pulse" />
@@ -30,7 +33,11 @@ const announcement = computed(() => loading.value ? 'Cargando personajes…'
             </div>
             <template v-else-if="result">
                 <ul v-if="result.data.length" aria-label="Personajes encontrados" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    <li v-for="character in result.data" :key="character.id" class="min-w-0"><CharacterCard :character="character" :catalog-query="criteria" /></li>
+                    <li v-for="character in result.data" :key="character.id" class="min-w-0">
+                        <CharacterCard :character="character" :catalog-query="criteria">
+                            <template #actions><FavoriteButton :character="character" /></template>
+                        </CharacterCard>
+                    </li>
                 </ul>
                 <div v-else class="rounded-2xl border border-line bg-white p-8 text-center">
                     <h2 class="text-xl font-semibold">{{ criteria.page > result.meta.last_page ? 'Esta página no tiene resultados' : 'No hay personajes para esta búsqueda' }}</h2>

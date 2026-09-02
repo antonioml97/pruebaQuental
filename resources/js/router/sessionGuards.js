@@ -1,6 +1,8 @@
+import { watch } from 'vue';
+
 /** Espera a la sesión sin repetir consultas ni confundir loading con invitado. */
 export function installSessionGuards(router, session) {
-    return router.beforeEach(async (to) => {
+    const removeGuard = router.beforeEach(async (to) => {
         if (to.meta.access === 'public') return true;
 
         await session.whenIdle();
@@ -12,6 +14,13 @@ export function installSessionGuards(router, session) {
         }
         return true;
     });
+    const stop = watch(session.status, (status) => {
+        const route = router.currentRoute.value;
+        if (status === 'guest' && route.meta.access === 'authenticated') {
+            void router.replace({ name: 'login', query: { redirect: route.fullPath } });
+        }
+    });
+    return () => { removeGuard(); stop(); };
 }
 
 /** Solo permite destinos conocidos de la SPA; nunca URLs externas ni formularios de acceso. */

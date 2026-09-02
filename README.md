@@ -57,7 +57,8 @@ carga cada vista de forma diferida, dentro de un layout compartido con navegaci�
 adaptable a móvil. Al arrancar recupera el usuario mediante la API y mantiene el
 estado de sesión. Incluye registro, login, logout y guardas de navegación. Las
 consultas de catálogo incluyen filtros y paginación, y cada personaje dispone de
-una ficha pública. La interfaz de favoritos sigue pendiente del issue #31.
+una ficha pública. Los usuarios autenticados pueden guardar y quitar favoritos
+desde el catálogo, el detalle y su listado privado.
 
 | URL | Vista | Acceso previsto |
 | --- | --- | --- |
@@ -65,7 +66,7 @@ una ficha pública. La interfaz de favoritos sigue pendiente del issue #31.
 | `/characters/:externalId` | Ficha con datos, localizaciones y episodios; identificador público entero positivo. | Público. |
 | `/login` | Inicio de sesión y recuperación del destino original. | Invitado. |
 | `/register` | Registro con inicio de sesión automático. | Invitado. |
-| `/favorites` | Favoritos provisionales, sin datos privados. | Autenticado. |
+| `/favorites` | Favoritos privados con paginación y acciones de eliminación. | Autenticado. |
 | Cualquier otra ruta del cliente | Página no encontrada. | Público. |
 
 Los metadatos `title` y `access` centralizan el título y el acceso previsto de
@@ -121,7 +122,7 @@ de Swagger durante el build no corresponde al bundle de Vue.
 | `app.js`, `bootstrap.js` y `App.vue` | Composición, montaje y recuperación inicial de sesión. |
 | `domains/authentication/` | Componentes, composables, servicios y vistas de registro/login. `index.js` expone el servicio público del dominio. |
 | `domains/characters/` | Catálogo y detalle: componentes de presentación, composables de carga/cancelación, servicio HTTP y vistas diferidas. |
-| `domains/favorites/views/` | Pantalla diferida de favoritos. |
+| `domains/favorites/` | Servicio HTTP, estado privado compartido, botón, avisos y vista de favoritos. |
 | `shared/components/` | Presentación transversal: `BrandMark` y `PagePlaceholder`. |
 | `shared/layouts/` | `MainLayout.vue`: cabecera, navegación, contenido y pie compartidos. |
 | `shared/views/` | Página 404, que no pertenece a un dominio funcional. |
@@ -197,8 +198,33 @@ login. Usa el identificador público del personaje, nunca la clave local de la b
 - Se distinguen carga, personaje inexistente (404) y otros fallos con reintento
   manual. El enlace de regreso permanece disponible en todos esos estados.
 
-El slot `actions` de `CharacterProfile` permite incorporar la acción de favoritos
-en #31; por ahora no muestra botones ni realiza consultas de favoritos.
+Los slots `actions` de `CharacterProfile` y `CharacterCard` incorporan el botón
+de favoritos sin acoplar esos componentes de presentación a la sesión.
+
+### Favoritos privados
+
+Inicia sesión y usa «Añadir a favoritos» desde una tarjeta o una ficha. La misma
+acción pasa a «Quitar de favoritos» tras la confirmación del servidor, y el estado
+se comparte con `/favorites` sin recargar la colección al navegar.
+
+- `createFavoriteService` usa el cliente Axios existente. Envía `PUT` para añadir
+  y `DELETE` para quitar, preparando la cookie CSRF antes de cada escritura.
+- `createFavorites` mantiene una colección por aplicación y sesión, sin Pinia,
+  `localStorage` ni dependencias nuevas. La API no devuelve `is_favorite`, por lo
+  que se leen sus páginas de 100 elementos una vez al recuperar la sesión. No se
+  hace una petición por tarjeta ni se cambia el contrato del backend.
+- El listado presenta esa colección en páginas locales de 20 elementos. La URL
+  conserva `page`; si se elimina el último personaje de una página, se vuelve a
+  la última página disponible. Los cambios hechos desde otra pestaña se recuperan
+  al recargar: no hay sincronización entre pestañas ni sondeo automático.
+- Mientras se carga la colección no se asume que un personaje no sea favorito.
+  Las escrituras se realizan de una en una, con controles desactivados y avisos
+  accesibles. No se cambia el estado visual antes de recibir confirmación.
+- Cambiar o cerrar sesión borra e invalida los datos y peticiones anteriores.
+  Un 401 vigente caduca la sesión y lleva a login si la ruta es privada. Ante 419
+  se ofrece «Renovar CSRF y reintentar», sin reenvíos automáticos.
+- Las respuestas de red antiguas no pueden rellenar los favoritos de otra cuenta.
+  Las lecturas y escrituras siguen siendo autorizadas por el backend.
 
 ### Variables públicas
 
@@ -358,8 +384,8 @@ mutaciones; cada consumidor recibe el error para decidir cómo presentarlo.
 
 Para probarlo en el navegador: abre `/register`, crea una cuenta, visita `/favorites`,
 recarga y cierra sesión desde el menú. Al abrir favoritos de nuevo se solicitará
-login y, tras entrar, volverás a esa ruta. El contenido de favoritos sigue siendo
-provisional hasta el issue #31.
+login y, tras entrar, volverás a esa ruta. Guarda personajes desde el catálogo
+para comprobar también el listado privado, el detalle y la eliminación.
 
 Para un cliente separado, `FRONTEND_URL` debe coincidir con su origen permitido.
 La configuración CORS por sí sola no comparte cookies entre dominios: la SPA

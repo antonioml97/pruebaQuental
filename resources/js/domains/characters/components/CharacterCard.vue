@@ -18,6 +18,7 @@ const detailQuery = computed(() => writeCharacterQuery(readCharacterQuery(props.
                 <RouterLink :to="{ name: 'character-detail', params: { externalId: character.id }, query: detailQuery }" class="rounded-sm underline decoration-line underline-offset-4 hover:text-brand-700">{{ character.name }}</RouterLink>
             </h2>
             <CharacterFacts :character="character" class="mt-4" />
+            <div v-if="$slots.actions" class="mt-5"><slot name="actions" /></div>
         </div>
     </article>
 </template>

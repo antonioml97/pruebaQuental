@@ -1,7 +1,7 @@
 import { ApiError } from '../../../shared/services/http/ApiError';
 import { readCharacterQuery } from './characterQuery';
 
-function validSummary(item) {
+export function validSummary(item) {
     return Number.isSafeInteger(item?.id) && item.id > 0
         && ['name', 'status', 'species', 'type', 'gender', 'image_url'].every((field) => typeof item[field] === 'string');
 }
@@ -18,7 +18,7 @@ function validDetail(item, externalId) {
             && ['name', 'code', 'air_date'].every((field) => typeof episode[field] === 'string'));
 }
 
-function validPage(payload) {
+export function validPage(payload) {
     const meta = payload?.meta;
     const links = payload?.links;
     return Array.isArray(payload?.data)

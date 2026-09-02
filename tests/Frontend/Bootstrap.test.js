@@ -22,8 +22,8 @@ async function start(adapter) {
     const router = createAppRouter(createMemoryHistory());
     await router.push('/characters');
     // Los contadores de estos casos miden exclusivamente las peticiones de sesión.
-    const isolatedAdapter = (config) => config.url === '/characters'
-        ? Promise.resolve(response(config, characterPage({ data: [] }))) : adapter(config);
+    const isolatedAdapter = (config) => ['/characters', '/favorites'].includes(config.url)
+        ? Promise.resolve(response(config, characterPage({ data: [], perPage: config.url === '/favorites' ? 100 : 20 }))) : adapter(config);
     mounted = await mountApplication({ router, client: createApiClient({ adapter: isolatedAdapter }) });
     return mounted;
 }
@@ -72,7 +72,9 @@ describe('Arranque y recuperación de sesión', () => {
         const history = createMemoryHistory();
         history.push('/favorites?page=2');
         const router = createAppRouter(history);
-        const adapter = vi.fn((config) => request.promise.then(() => authenticated
+        const adapter = vi.fn((config) => config.url === '/favorites'
+            ? Promise.resolve(response(config, characterPage({ data: [], perPage: 100 })))
+            : request.promise.then(() => authenticated
             ? response(config, { data: { id: 1, name: 'Morty', email: 'morty@example.test' } })
             : rejectResponse(config, 401, 'unauthenticated')));
         const start = mountApplication({ router, client: createApiClient({ adapter }) });
@@ -82,6 +84,6 @@ describe('Arranque y recuperación de sesión', () => {
         await mounted.ready;
         expect(router.currentRoute.value.name).toBe(authenticated ? 'favorites' : 'login');
         expect(document.querySelector('h1').textContent).toBe(authenticated ? 'Tus favoritos' : 'Iniciar sesión');
-        expect(adapter).toHaveBeenCalledTimes(1);
+        expect(adapter).toHaveBeenCalledTimes(authenticated ? 2 : 1);
     });
 });

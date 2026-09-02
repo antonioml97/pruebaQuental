@@ -7,6 +7,7 @@ import { createSession, sessionKey } from '../../resources/js/shared/composables
 import { ApiError } from '../../resources/js/shared/services/http/ApiError';
 import { characterServiceKey } from '../../resources/js/domains/characters';
 import { emptyCharacterService } from './support/characters';
+import { favoriteTestProvider } from './support/favorites';
 
 enableAutoUnmount(afterEach);
 
@@ -23,7 +24,7 @@ async function mountApp(path = '/') {
     await router.isReady();
     const session = createSession({ currentUser: () => Promise.reject(new ApiError({ status: 401, code: 'unauthenticated', message: 'Invitado' })) });
     await session.restore();
-    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { [sessionKey]: session, [characterServiceKey]: emptyCharacterService } } });
+    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { ...favoriteTestProvider(), [sessionKey]: session, [characterServiceKey]: emptyCharacterService } } });
     return { wrapper, router };
 }
 

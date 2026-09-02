@@ -8,6 +8,7 @@ import CharacterProfile from '../../resources/js/domains/characters/components/C
 import { ApiError } from '../../resources/js/shared/services/http/ApiError';
 import { characterDetail, characterPage } from './support/characters';
 import { deferred } from './support/http';
+import { favoriteTestProvider } from './support/favorites';
 
 enableAutoUnmount(afterEach);
 beforeEach(() => vi.stubGlobal('scrollTo', vi.fn()));
@@ -17,7 +18,7 @@ async function setup(path = '/characters/1', detail = vi.fn(async () => characte
     const router = createAppRouter(createMemoryHistory());
     await router.push(path);
     const list = vi.fn(async (criteria) => characterPage({ page: criteria.page, perPage: criteria.per_page, total: 60 }));
-    const wrapper = mount(RouterView, { attachTo: document.body, global: { plugins: [router], provide: { [characterServiceKey]: { detail, list } } } });
+    const wrapper = mount(RouterView, { attachTo: document.body, global: { plugins: [router], provide: { ...favoriteTestProvider(), [characterServiceKey]: { detail, list } } } });
     return { wrapper, router, detail, list };
 }
 

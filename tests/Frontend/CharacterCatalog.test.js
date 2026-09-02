@@ -8,6 +8,7 @@ import CharacterCard from '../../resources/js/domains/characters/components/Char
 import { ApiError } from '../../resources/js/shared/services/http/ApiError';
 import { character, characterPage } from './support/characters';
 import { deferred } from './support/http';
+import { favoriteTestProvider } from './support/favorites';
 
 enableAutoUnmount(afterEach);
 beforeEach(() => vi.stubGlobal('scrollTo', vi.fn()));
@@ -16,7 +17,7 @@ afterEach(() => { vi.unstubAllGlobals(); document.body.replaceChildren(); });
 async function setup(path = '/characters', list = vi.fn(async (criteria) => characterPage({ page: criteria.page, perPage: criteria.per_page, total: 60 }))) {
     const router = createAppRouter(createMemoryHistory());
     await router.push(path);
-    const wrapper = mount(CharactersView, { attachTo: document.body, global: { plugins: [router], provide: { [characterServiceKey]: { list } } } });
+    const wrapper = mount(CharactersView, { attachTo: document.body, global: { plugins: [router], provide: { ...favoriteTestProvider(), [characterServiceKey]: { list } } } });
     return { wrapper, router, list };
 }
 

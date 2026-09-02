@@ -10,6 +10,7 @@ import { createAuthenticationService } from '../../resources/js/domains/authenti
 import { deferred, rejectResponse, response } from './support/http';
 import { characterServiceKey } from '../../resources/js/domains/characters';
 import { emptyCharacterService } from './support/characters';
+import { favoriteTestProvider } from './support/favorites';
 
 enableAutoUnmount(afterEach);
 beforeEach(() => vi.stubGlobal('scrollTo', vi.fn()));
@@ -29,7 +30,7 @@ async function setup(path = '/login', { authenticated = false, mutation } = {}) 
     const router = createAppRouter(createMemoryHistory());
     installSessionGuards(router, session);
     await router.push(path);
-    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { [sessionKey]: session, [characterServiceKey]: emptyCharacterService } } });
+    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { ...favoriteTestProvider(), [sessionKey]: session, [characterServiceKey]: emptyCharacterService } } });
     return { wrapper, router, session, adapter };
 }
 

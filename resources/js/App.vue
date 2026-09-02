@@ -1,7 +1,10 @@
 <script setup>
-import WelcomeView from './views/WelcomeView.vue';
+import { RouterView } from 'vue-router';
+import MainLayout from './layouts/MainLayout.vue';
 </script>
 
 <template>
-    <WelcomeView />
+    <MainLayout>
+        <RouterView />
+    </MainLayout>
 </template>

@@ -10,12 +10,6 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
-Route::get('/',
-    /** Entrega el documento inicial donde se monta la aplicación Vue. */
-    function (): View {
-        return view('app');
-    });
-
 Route::get('/docs',
     /** Entrega la interfaz interactiva generada desde el contrato OpenAPI. */
     function (): View {
@@ -29,3 +23,11 @@ Route::get('/docs/openapi.yaml',
             'Content-Type' => 'application/yaml; charset=UTF-8',
         ]);
     })->name('docs.openapi');
+
+Route::get('/{path?}',
+    /** Entrega la SPA para enlaces directos; Vue resuelve la vista o su página 404. */
+    function (): View {
+        return view('app');
+    })
+    ->where('path', '(?!(?:api|docs|up|build|storage)(?:/|$)).*')
+    ->name('spa');

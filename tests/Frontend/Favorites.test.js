@@ -25,10 +25,12 @@ async function setup(overrides = {}, authenticated = true) {
 describe('Favoritos compartidos y aislamiento de sesión', () => {
     it('no consulta ni escribe favoritos de un invitado', async () => {
         const { favorites, service } = await setup({}, false);
-        await favorites.setFavorite(character, true);
+        await favorites.add(character);
+        await favorites.remove(character);
         await favorites.retry();
         expect(service.list).not.toHaveBeenCalled();
         expect(service.add).not.toHaveBeenCalled();
+        expect(service.remove).not.toHaveBeenCalled();
     });
 
     it('reúne todas las páginas antes de dar por conocido el estado y no duplica personajes', async () => {
@@ -50,9 +52,11 @@ describe('Favoritos compartidos y aislamiento de sesión', () => {
         const pending = deferred();
         const { favorites, service } = await setup({ add: vi.fn(() => pending.promise) });
         await flushPromises();
-        const saving = favorites.setFavorite(character, true);
-        await favorites.setFavorite(character, true);
-        await favorites.setFavorite({ ...character, id: 2 }, true);
+        const saving = favorites.add(character);
+        await favorites.add(character);
+        await favorites.add({ ...character, id: 2 });
+        await favorites.remove(character);
+        expect(service.remove).not.toHaveBeenCalled();
         expect(service.add).toHaveBeenCalledTimes(1);
         expect(favorites.has(1)).toBe(false);
         expect(favorites.disabled.value).toBe(true);
@@ -60,7 +64,7 @@ describe('Favoritos compartidos y aislamiento de sesión', () => {
         await saving;
         expect(favorites.has(1)).toBe(true);
         expect(favorites.notice.value).toContain('añadido');
-        await favorites.setFavorite(character, false);
+        await favorites.remove(character);
         expect(favorites.has(1)).toBe(false);
         expect(favorites.notice.value).toContain('eliminado');
     });
@@ -68,8 +72,8 @@ describe('Favoritos compartidos y aislamiento de sesión', () => {
     it('mantiene una sola relación aunque se confirme otra alta idempotente', async () => {
         const { favorites } = await setup();
         await flushPromises();
-        await favorites.setFavorite(character, true);
-        await favorites.setFavorite(character, true);
+        await favorites.add(character);
+        await favorites.add(character);
         expect(favorites.items.value).toHaveLength(1);
     });
 
@@ -77,7 +81,7 @@ describe('Favoritos compartidos y aislamiento de sesión', () => {
         const add = vi.fn().mockRejectedValueOnce(new ApiError({ status, message: 'Error temporal' })).mockResolvedValueOnce(character);
         const { favorites, session } = await setup({ add });
         await flushPromises();
-        await favorites.setFavorite(character, true);
+        await favorites.add(character);
         expect(favorites.error.value.status).toBe(status);
         expect(favorites.has(1)).toBe(false);
         expect(session.isAuthenticated.value).toBe(true);
@@ -87,13 +91,55 @@ describe('Favoritos compartidos y aislamiento de sesión', () => {
         expect(favorites.error.value).toBeNull();
     });
 
+    it.each([419, 500])('conserva el favorito ante un error %i de baja y reintenta la eliminación', async (status) => {
+        const remove = vi.fn().mockRejectedValueOnce(new ApiError({ status, message: 'Error temporal' })).mockResolvedValueOnce(undefined);
+        const { favorites, session, service } = await setup({
+            list: vi.fn(async () => characterPage({ perPage: 100 })), remove,
+        });
+        await flushPromises();
+        await favorites.remove(character);
+        expect(favorites.has(1)).toBe(true);
+        expect(favorites.error.value.action.type).toBe('remove');
+        expect(session.isAuthenticated.value).toBe(true);
+        expect(remove).toHaveBeenCalledTimes(1);
+
+        await favorites.retry();
+        expect(remove).toHaveBeenCalledTimes(2);
+        expect(service.add).not.toHaveBeenCalled();
+        expect(favorites.has(1)).toBe(false);
+        expect(favorites.error.value).toBeNull();
+    });
+
+    it('espera la baja y bloquea tanto altas como bajas mientras está pendiente', async () => {
+        const pending = deferred();
+        const { favorites, service } = await setup({
+            list: vi.fn(async () => characterPage({ perPage: 100 })),
+            remove: vi.fn(() => pending.promise),
+        });
+        await flushPromises();
+        const saving = favorites.remove(character);
+        await favorites.remove(character);
+        await favorites.add(character);
+        expect(service.remove).toHaveBeenCalledTimes(1);
+        expect(service.add).not.toHaveBeenCalled();
+        expect(favorites.has(1)).toBe(true);
+        expect(favorites.disabled.value).toBe(true);
+
+        pending.resolve();
+        await saving;
+        expect(favorites.has(1)).toBe(false);
+        expect(favorites.saving.value).toBe(false);
+    });
+
     it('un listado fallido no habilita mutaciones y puede reintentarse', async () => {
         const list = vi.fn().mockRejectedValueOnce(new ApiError({ status: 500, message: 'Fallo de carga' })).mockResolvedValueOnce(characterPage({ perPage: 100 }));
         const { favorites, service } = await setup({ list });
         await flushPromises();
         expect(favorites.loaded.value).toBe(false);
-        await favorites.setFavorite(character, true);
+        await favorites.add(character);
+        await favorites.remove(character);
         expect(service.add).not.toHaveBeenCalled();
+        expect(service.remove).not.toHaveBeenCalled();
         await favorites.retry();
         expect(favorites.has(1)).toBe(true);
     });
@@ -103,7 +149,7 @@ describe('Favoritos compartidos y aislamiento de sesión', () => {
         await flushPromises();
         service[operation].mockRejectedValue(new ApiError({ status: 401 }));
         if (operation === 'list') await favorites.retry();
-        else await favorites.setFavorite(character, operation === 'add');
+        else await favorites[operation](character);
         expect(session.status.value).toBe('guest');
         expect(favorites.items.value).toEqual([]);
         expect(favorites.loaded.value).toBe(false);
@@ -123,11 +169,11 @@ describe('Favoritos compartidos y aislamiento de sesión', () => {
         expect(favorites.items.value.map((item) => item.id)).toEqual([2]);
     });
 
-    it('descarta una escritura antigua al cerrar sesión e iniciar otra', async () => {
+    it.each(['add', 'remove'])('descarta una escritura antigua (%s) al cerrar sesión e iniciar otra', async (operation) => {
         const old = deferred();
-        const { favorites, session } = await setup({ add: vi.fn(() => old.promise) });
+        const { favorites, session } = await setup({ [operation]: vi.fn(() => old.promise) });
         await flushPromises();
-        const saving = favorites.setFavorite(character, true);
+        const saving = favorites[operation](character);
         await session.logout();
         expect(favorites.items.value).toEqual([]);
         await session.login({ ...user, id: 2 });

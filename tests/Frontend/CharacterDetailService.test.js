@@ -22,10 +22,17 @@ describe('Servicio de detalle del personaje', () => {
         expect(await service.detail(1)).toEqual(data);
     });
 
-    it.each(['0', '-1', '01', '1.2', '1e2', '../auth/user', 'https://otro.test', '9007199254740992', '', null, undefined, [1], {}])('rechaza el identificador inválido %j antes de consultar', async (id) => {
+    it.each([0, -1, 1.2, NaN, Infinity, true, '0', '-1', '01', '1.2', '1e2', '../auth/user', 'https://otro.test', '9007199254740992', '', null, undefined, [1], {}])('rechaza el identificador inválido %j antes de consultar', async (id) => {
         const get = vi.fn();
         await expect(createCharacterService({ get }).detail(id)).rejects.toMatchObject({ status: 404, code: 'character_not_found' });
         expect(get).not.toHaveBeenCalled();
+    });
+
+    it.each([Number.MAX_SAFE_INTEGER, String(Number.MAX_SAFE_INTEGER)])('acepta el límite seguro como número o texto: %s', async (id) => {
+        const data = characterDetail({ id: Number(id) });
+        const get = vi.fn(async () => ({ data: { data } }));
+        expect(await createCharacterService({ get }).detail(id)).toEqual(data);
+        expect(get).toHaveBeenCalledWith(`/characters/${id}`, { signal: undefined });
     });
 
     it.each([

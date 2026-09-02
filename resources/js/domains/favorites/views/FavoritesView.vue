@@ -5,6 +5,7 @@ import CharacterCard from '../../characters/components/CharacterCard.vue';
 import CharacterPagination from '../../characters/components/CharacterPagination.vue';
 import { readCharacterQuery, sameCharacterQuery } from '../../characters/services/characterQuery';
 import { useFavorites } from '../composables/useFavorites';
+import { removeEmptyParams } from '../../../shared/utils/queryParams';
 import FavoriteButton from '../components/FavoriteButton.vue';
 import FavoriteNotice from '../components/FavoriteNotice.vue';
 
@@ -20,7 +21,9 @@ const meta = computed(() => ({ current_page: page.value, last_page: lastPage.val
 // Los controles emiten números; no se siguen enlaces HTTP del servidor.
 const links = computed(() => ({ first: true, last: true, prev: page.value > 1, next: page.value < lastPage.value }));
 
-function pageQuery(number) { return number > 1 ? { page: String(number) } : {}; }
+function pageQuery(number) {
+    return removeEmptyParams({ page: number > 1 ? String(number) : undefined });
+}
 
 watch([loaded, lastPage, () => route.query], async () => {
     if (!authenticated.value || !loaded.value || route.name !== 'favorites') return;

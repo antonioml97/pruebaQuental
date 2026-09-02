@@ -1,2 +1,3 @@
 export const characterServiceKey = Symbol('characterService');
-export { createCharacterService, validSummary as isCharacterSummary, validPage as isCharacterPage } from './services/createCharacterService';
+export { createCharacterService } from './services/createCharacterService';
+export { validSummary as isCharacterSummary, validPage as isCharacterPage } from './services/characterResponseValidation';

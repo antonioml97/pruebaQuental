@@ -129,6 +129,7 @@ de Swagger durante el build no corresponde al bundle de Vue.
 | `router/` | Mapa de rutas, guardas de sesión y validación del destino posterior al login. |
 | `shared/composables/` | Sesión compartida por todos los dominios, sin Pinia. |
 | `shared/services/http/` | Instancia Axios y normalización de errores/cancelaciones. |
+| `shared/utils/` | Utilidades puras como `removeEmptyParams`, que elimina `''`, `null` y `undefined` sin mutar el objeto. |
 
 `resources/js/` es la raíz de fuentes de la SPA, equivalente a `src/` en un
 proyecto Vue independiente. Se conservan las entradas de Laravel/Vite. Los módulos

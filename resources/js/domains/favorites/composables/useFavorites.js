@@ -70,7 +70,7 @@ export function createFavorites(service, session) {
         }
     }
 
-    async function setFavorite(character, selected) {
+    async function add(character) {
         if (!session.isAuthenticated.value || !loaded.value || loading.value || saving.value) return;
         const controller = new AbortController();
         request = controller;
@@ -78,15 +78,35 @@ export function createFavorites(service, session) {
         error.value = null;
         notice.value = '';
         try {
-            const saved = selected
-                ? await service.add(character.id, { signal: controller.signal })
-                : await service.remove(character.id, { signal: controller.signal });
+            const saved = await service.add(character.id, { signal: controller.signal });
             if (request !== controller) return;
             const others = items.value.filter((item) => item.id !== character.id);
-            items.value = selected ? [saved, ...others] : others;
-            notice.value = `${character.name}: ${selected ? 'añadido a' : 'eliminado de'} favoritos.`;
+            items.value = [saved, ...others];
+            notice.value = `${character.name}: añadido a favoritos.`;
         } catch (failure) {
-            if (request === controller) report(failure, { character, selected });
+            if (request === controller) report(failure, { character, type: 'add' });
+        } finally {
+            if (request === controller) {
+                saving.value = false;
+                request = null;
+            }
+        }
+    }
+
+    async function remove(character) {
+        if (!session.isAuthenticated.value || !loaded.value || loading.value || saving.value) return;
+        const controller = new AbortController();
+        request = controller;
+        saving.value = true;
+        error.value = null;
+        notice.value = '';
+        try {
+            await service.remove(character.id, { signal: controller.signal });
+            if (request !== controller) return;
+            items.value = items.value.filter((item) => item.id !== character.id);
+            notice.value = `${character.name}: eliminado de favoritos.`;
+        } catch (failure) {
+            if (request === controller) report(failure, { character, type: 'remove' });
         } finally {
             if (request === controller) {
                 saving.value = false;
@@ -97,7 +117,9 @@ export function createFavorites(service, session) {
 
     function retry() {
         const action = error.value?.action;
-        return action ? setFavorite(action.character, action.selected) : load();
+        if (!action) return load();
+        if (action.type === 'add') return add(action.character);
+        return remove(action.character);
     }
 
     const stop = watch(() => session.isAuthenticated.value ? session.user.value?.id : null, (userId) => {
@@ -112,7 +134,7 @@ export function createFavorites(service, session) {
         sessionLoading: computed(() => session.status.value === 'loading'),
         disabled: computed(() => !session.isAuthenticated.value || !loaded.value || loading.value || saving.value),
         has: (id) => items.value.some((item) => item.id === id),
-        setFavorite, retry,
+        add, remove, retry,
         dispose() { stop(); clear(); },
     };
 }

@@ -19,18 +19,15 @@ use Illuminate\Support\Facades\Hash;
  */
 final class LoginService
 {
-    /** Emisor de sesiones opacas. */
-    private readonly TokenGenerator $tokens;
-
     /**
      * Recibe el colaborador específico del caso de uso.
      *
      * @param  TokenGenerator  $tokens  Emisor que persiste el hash y devuelve el secreto solo para su entrega.
      */
-    public function __construct(TokenGenerator $tokens)
-    {
-        $this->tokens = $tokens;
-    }
+    public function __construct(
+        /** Emisor de sesiones opacas. */
+        private readonly TokenGenerator $tokens,
+    ) {}
 
     /** Evita omitir el trabajo de hashing cuando el correo no existe. */
     private const DUMMY_PASSWORD_HASH = '$2y$12$Qb8JkZGuChqjabZhfFDXwObg9D62z.R04hBeZCS4BHgGdh94d0hpW';

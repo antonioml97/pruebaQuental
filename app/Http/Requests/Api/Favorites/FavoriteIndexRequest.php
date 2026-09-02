@@ -49,9 +49,6 @@ final class FavoriteIndexRequest extends FormRequest
      */
     public function perPage(): int
     {
-        /** @var array<string, mixed> $validated */
-        $validated = $this->validated();
-
-        return isset($validated['per_page']) ? (int) $validated['per_page'] : 20;
+        return (int) $this->validated('per_page', 20);
     }
 }

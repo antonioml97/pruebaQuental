@@ -2,21 +2,33 @@
     "$schema": "https://www.schemastore.org/package.json",
     "private": true,
     "type": "module",
+    "engines": {
+        "node": "^24.15.0"
+    },
     "scripts": {
         "build": "vite build",
         "dev": "vite",
         "docs:lint": "redocly lint docs/openapi.yaml",
+        "test": "vitest run",
+        "test:watch": "vitest",
         "prepare": "husky"
     },
     "devDependencies": {
         "@redocly/cli": "2.49.1",
         "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-vue": "^6.0.8",
+        "@vue/test-utils": "^2.5.0",
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",
         "husky": "^9.1.7",
+        "jsdom": "^30.0.1",
         "laravel-vite-plugin": "^2.0.0",
         "swagger-ui-dist": "5.32.14",
         "tailwindcss": "^4.0.0",
-        "vite": "^7.0.7"
+        "vite": "^7.0.7",
+        "vitest": "^4.1.11"
+    },
+    "dependencies": {
+        "vue": "^3.5.42"
     }
 }

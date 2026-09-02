@@ -16,7 +16,7 @@ jobs:
   documentation:
     runs-on: ubuntu-latest
 
-    name: OpenAPI y Swagger UI
+    name: Frontend y OpenAPI
 
     steps:
       - name: Checkout code
@@ -34,7 +34,10 @@ jobs:
       - name: Validate OpenAPI contract
         run: npm run docs:lint
 
-      - name: Build Swagger UI
+      - name: Test Vue components
+        run: npm test
+
+      - name: Build Vue and Swagger UI
         run: npm run build
 
   tests:

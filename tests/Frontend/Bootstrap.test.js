@@ -4,6 +4,7 @@ import { mountApplication } from '../../resources/js/bootstrap';
 import { createAppRouter } from '../../resources/js/router';
 import { createApiClient } from '../../resources/js/shared/services/http/createApiClient';
 import { deferred, rejectResponse, response } from './support/http';
+import { characterPage } from './support/characters';
 
 let mounted;
 beforeEach(() => {
@@ -20,11 +21,25 @@ afterEach(() => {
 async function start(adapter) {
     const router = createAppRouter(createMemoryHistory());
     await router.push('/characters');
-    mounted = await mountApplication({ router, client: createApiClient({ adapter }) });
+    // Los contadores de estos casos miden exclusivamente las peticiones de sesión.
+    const isolatedAdapter = (config) => config.url === '/characters'
+        ? Promise.resolve(response(config, characterPage({ data: [] }))) : adapter(config);
+    mounted = await mountApplication({ router, client: createApiClient({ adapter: isolatedAdapter }) });
     return mounted;
 }
 
 describe('Arranque y recuperación de sesión', () => {
+    it('comparte el cliente configurado con el catálogo sin esperar a una sesión privada', async () => {
+        const adapter = vi.fn((config) => config.url === '/characters'
+            ? Promise.resolve(response(config, characterPage())) : rejectResponse(config, 401, 'unauthenticated'));
+        const router = createAppRouter(createMemoryHistory());
+        mounted = await mountApplication({ router, client: createApiClient({ adapter }) });
+        await mounted.ready;
+        await vi.waitFor(() => expect(document.querySelector('article h2')?.textContent).toBe('Rick Sanchez'));
+        expect(adapter.mock.calls.map(([config]) => config.url).sort()).toEqual(['/auth/user', '/characters']);
+        expect(mounted.session.status.value).toBe('guest');
+    });
+
     it('monta la pantalla mientras recupera al usuario, sin leer ni escribir almacenamiento persistente', async () => {
         const storageGet = vi.spyOn(Storage.prototype, 'getItem');
         const storageSet = vi.spyOn(Storage.prototype, 'setItem');

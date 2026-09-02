@@ -5,6 +5,7 @@ import { createApiClient } from './shared/services/http/createApiClient';
 import { createAuthenticationService } from './domains/authentication';
 import { createSession, sessionKey } from './shared/composables/useSession';
 import { installSessionGuards } from './router/sessionGuards';
+import { characterServiceKey, createCharacterService } from './domains/characters';
 
 /** Monta sin bloquear la pantalla por la red y restaura únicamente la identidad pública. */
 export async function mountApplication({ target = '#app', router = createAppRouter(), client = createApiClient() } = {}) {
@@ -14,6 +15,7 @@ export async function mountApplication({ target = '#app', router = createAppRout
     const removeGuards = installSessionGuards(router, session);
     const app = createApp(App);
     app.provide(sessionKey, session);
+    app.provide(characterServiceKey, createCharacterService(client));
     app.onUnmount(removeGuards);
     app.use(router);
     app.mount(target);

@@ -2,13 +2,15 @@
 
 Backend REST desarrollado con Laravel 12 para sincronizar el catálogo público de
 Rick and Morty, consultarlo con filtros y gestionar los personajes favoritos de
-cada usuario. El entorno local se ejecuta con Laravel Sail, PHP y MySQL.
+cada usuario. Incluye la base de una SPA Vue 3, compilada con Vite y estilizada con
+Tailwind CSS. El entorno local se ejecuta con Laravel Sail, PHP y MySQL.
 
 ## Requisitos
 
 - Docker Desktop o Docker Engine con Docker Compose.
 - Git.
-- Node.js y npm para compilar los recursos de Swagger UI y ejecutar sus validaciones.
+- Node.js 24 (24.15 o superior) y npm para Vue, Swagger UI y sus validaciones.
+  También se pueden usar los incluidos en Sail mediante `./vendor/bin/sail npm`.
 - WSL2 en Windows. Git, Sail, npm y los hooks del repositorio deben ejecutarse desde WSL2.
 
 No es necesario instalar PHP ni MySQL directamente en el equipo si se utiliza
@@ -33,11 +35,11 @@ docker run --rm \
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate
-npm install
+npm ci
 npm run build
 ```
 
-`npm install` configura también el hook `pre-push` de Husky. La aplicación queda
+`npm ci` configura también el hook `pre-push` de Husky. La aplicación queda
 disponible en [http://localhost](http://localhost) y su estado se puede comprobar
 en [http://localhost/up](http://localhost/up).
 
@@ -46,6 +48,90 @@ Para detener los contenedores:
 ```sh
 ./vendor/bin/sail down
 ```
+
+## Desarrollo del frontend
+
+La entrada `/` sirve una vista Blade mínima que monta `App.vue`. Por ahora muestra
+una bienvenida y el acceso a Swagger: no implementa navegación con Vue Router,
+autenticación, catálogo ni favoritos (issues #26–#31).
+
+Con Sail en marcha, ejecuta en WSL2:
+
+```sh
+npm ci
+npm run dev
+```
+
+Abre **http://localhost**, no el puerto 5173: Laravel entrega el HTML y Vite sirve
+los recursos con recarga en caliente (HMR). Un cambio de plantilla en
+`resources/js/views/WelcomeView.vue` debe verse sin recargar manualmente.
+Si no tienes Node en WSL2, usa los mismos scripts dentro de Sail:
+
+```sh
+./vendor/bin/sail npm ci
+./vendor/bin/sail npm run dev -- --host 0.0.0.0
+```
+
+Vite anuncia HMR en `localhost` y usa polling dentro de Sail para detectar también
+los cambios realizados desde Windows en carpetas compartidas. Escuchar en
+`0.0.0.0` permite acceder al contenedor; no es la dirección que debe abrir el navegador.
+
+Detén Vite con `Ctrl+C` y ejecuta `npm run build` (o `./vendor/bin/sail npm run build`)
+para comprobar los recursos de producción. Vite optimiza y minifica en
+`public/build`; no se añade otro bundler ni minificador. `public/hot` indica a
+Laravel cuándo usar el servidor de desarrollo y se elimina al detenerlo
+normalmente. Ambos son artefactos locales que no se versionan.
+
+`resources/js/swagger.js` sigue siendo una entrada independiente, cargada solo en
+`/docs`. La SPA no descarga Swagger ni sus estilos. El aviso de tamaño del bundle
+de Swagger durante el build no corresponde al bundle de Vue.
+
+### Organización del código cliente
+
+| Ubicación bajo `resources/js` | Responsabilidad |
+| --- | --- |
+| `app.js` y `App.vue` | Montaje y componente raíz. |
+| `components/` | Piezas de presentación reutilizables, como `BrandMark.vue`. |
+| `views/` | Vistas completas; inicialmente `WelcomeView.vue`. |
+| `layouts/` | Estructura visual compartida de las futuras rutas (#26). |
+| `router/` | Rutas y navegación con Vue Router (#26). |
+| `composables/` | Estado y lógica reactiva reutilizable (#27). |
+| `services/` | Acceso HTTP y adaptación del contrato de la API (#27). |
+
+Las carpetas previstas se crearán al incorporar su primer módulo; no se añaden
+archivos vacíos ni implementaciones ficticias. Los componentes usan Composition
+API con `<script setup>`. `resources/css/app.css` centraliza el tema de Tailwind:
+colores, tipografía del sistema, foco visible y la escala de espaciado de Tailwind.
+No se descargan fuentes externas.
+Tailwind registra explícitamente las fuentes Blade, JavaScript y Vue; no escanea
+todo el repositorio ni las vistas compiladas en `storage`.
+
+### Variables públicas
+
+- `VITE_APP_NAME`: nombre mostrado en la cabecera. `.env.example` lo toma de
+  `APP_NAME`; si queda vacío, se muestra «Rick and Morty».
+- `APP_URL`: origen de Laravel (por defecto `http://localhost`), configuración del
+  servidor, no una variable pública de JavaScript.
+- `FRONTEND_URL`: origen permitido por CORS si se utiliza un cliente separado.
+  El puerto de Vite sirve recursos; no cambia el origen de la SPA entregada por Laravel.
+
+No se necesita una URL pública de API en esta entrega porque todavía no hay
+peticiones desde Vue. Todo valor con prefijo `VITE_` queda expuesto en el cliente:
+**nunca incluyas contraseñas, tokens ni claves privadas**. Reinicia Vite o vuelve a
+compilar después de cambiar estas variables.
+
+### Pruebas de componentes
+
+```sh
+npm test
+npm run test:watch
+```
+
+Vitest usa el plugin de Vue y jsdom con Vue Test Utils. Las pruebas se encuentran
+en `tests/Frontend`. Su configuración no carga el plugin Laravel, evitando que
+las pruebas unitarias dependan de PHP, del servidor Vite o de `public/hot`.
+Comprueban el montaje, el nombre público y el enlace independiente a Swagger.
+La prueba PHP de `/` valida el documento Blade sin exigir un build previo.
 
 ## Sincronización del catálogo
 
@@ -165,10 +251,12 @@ están definidos en OpenAPI.
 ./vendor/bin/sail pint --test
 
 # Contrato OpenAPI y recursos frontend
+npm test
 npm run docs:lint
 npm run build
 ```
 
 GitHub Actions ejecuta la suite en PHP 8.2, 8.3 y 8.4 con SQLite. La comprobación
-de documentación valida OpenAPI y compila Swagger UI. El hook local `pre-push`
+de frontend ejecuta las pruebas Vue, valida OpenAPI y compila la SPA y Swagger UI.
+El hook local `pre-push`
 ejecuta las pruebas de Laravel mediante Sail y cancela el envío si fallan.

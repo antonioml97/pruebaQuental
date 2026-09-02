@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
-/** Muestra la página de bienvenida incluida en el esqueleto de Laravel. */
+/** Entrega el documento inicial donde se monta la aplicación Vue. */
 Route::get('/', function (): View {
-    return view('welcome');
+    return view('app');
 });
 
 /** Entrega la interfaz interactiva generada desde el contrato OpenAPI. */

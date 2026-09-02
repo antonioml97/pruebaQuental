@@ -3,8 +3,8 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { createMemoryHistory } from 'vue-router';
 import App from '../../resources/js/App.vue';
 import { createAppRouter } from '../../resources/js/router';
-import { createSession, sessionKey } from '../../resources/js/composables/useSession';
-import { ApiError } from '../../resources/js/services/http/ApiError';
+import { createSession, sessionKey } from '../../resources/js/shared/composables/useSession';
+import { ApiError } from '../../resources/js/shared/services/http/ApiError';
 
 enableAutoUnmount(afterEach);
 

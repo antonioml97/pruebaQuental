@@ -4,9 +4,9 @@ import { createMemoryHistory } from 'vue-router';
 import App from '../../resources/js/App.vue';
 import { createAppRouter } from '../../resources/js/router';
 import { installSessionGuards } from '../../resources/js/router/sessionGuards';
-import { createSession, sessionKey } from '../../resources/js/composables/useSession';
-import { createApiClient } from '../../resources/js/services/http/createApiClient';
-import { createAuthenticationService } from '../../resources/js/services/authentication/createAuthenticationService';
+import { createSession, sessionKey } from '../../resources/js/shared/composables/useSession';
+import { createApiClient } from '../../resources/js/shared/services/http/createApiClient';
+import { createAuthenticationService } from '../../resources/js/domains/authentication';
 import { deferred, rejectResponse, response } from './support/http';
 
 enableAutoUnmount(afterEach);

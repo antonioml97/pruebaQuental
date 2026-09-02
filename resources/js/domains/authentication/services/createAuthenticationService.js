@@ -1,4 +1,4 @@
-import { ApiError } from '../http/ApiError';
+import { ApiError } from '../../../shared/services/http/ApiError';
 
 /** Adapta el contrato HTTP a identidad pública; nunca devuelve el cuerpo completo. */
 function publicUser(user) {

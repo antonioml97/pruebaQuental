@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { isReadonly } from 'vue';
 import { CanceledError } from 'axios';
-import { createSession } from '../../resources/js/composables/useSession';
-import { ApiError } from '../../resources/js/services/http/ApiError';
+import { createSession } from '../../resources/js/shared/composables/useSession';
+import { ApiError } from '../../resources/js/shared/services/http/ApiError';
 import { deferred } from './support/http';
 
 const user = { id: 1, name: 'Morty', email: 'morty@example.test' };

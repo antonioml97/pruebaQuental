@@ -1,6 +1,6 @@
 <script setup>
 import { RouterView, useRoute } from 'vue-router';
-import MainLayout from './layouts/MainLayout.vue';
+import MainLayout from './shared/layouts/MainLayout.vue';
 const route = useRoute();
 </script>
 

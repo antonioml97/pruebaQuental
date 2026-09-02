@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory } from 'vue-router';
 import { createAppRouter } from '../../resources/js/router';
 import { installSessionGuards, loginDestination } from '../../resources/js/router/sessionGuards';
-import { createSession } from '../../resources/js/composables/useSession';
-import { ApiError } from '../../resources/js/services/http/ApiError';
+import { createSession } from '../../resources/js/shared/composables/useSession';
+import { ApiError } from '../../resources/js/shared/services/http/ApiError';
 import { deferred } from './support/http';
 
 beforeEach(() => vi.stubGlobal('scrollTo', vi.fn()));

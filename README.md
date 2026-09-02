@@ -91,7 +91,7 @@ npm run dev
 
 Abre **http://localhost**, no el puerto 5173: Laravel entrega el HTML y Vite sirve
 los recursos con recarga en caliente (HMR). Un cambio de plantilla en
-`resources/js/views/CharactersView.vue` debe verse sin recargar manualmente.
+`resources/js/domains/characters/views/CharactersView.vue` debe verse sin recargar manualmente.
 Si no tienes Node en WSL2, usa los mismos scripts dentro de Sail:
 
 ```sh
@@ -118,13 +118,22 @@ de Swagger durante el build no corresponde al bundle de Vue.
 | Ubicación bajo `resources/js` | Responsabilidad |
 | --- | --- |
 | `app.js`, `bootstrap.js` y `App.vue` | Composición, montaje y recuperación inicial de sesión. |
-| `components/` | Presentación reutilizable: marca y formulario accesible de autenticación. |
-| `views/` | Pantallas diferidas de catálogo, detalle, acceso, registro, favoritos y 404. |
-| `layouts/` | `MainLayout.vue`: cabecera, navegación, contenido y pie compartidos. |
+| `domains/authentication/` | Componentes, composables, servicios y vistas de registro/login. `index.js` expone el servicio público del dominio. |
+| `domains/characters/views/` | Pantallas diferidas de catálogo y detalle. |
+| `domains/favorites/views/` | Pantalla diferida de favoritos. |
+| `shared/components/` | Presentación transversal: `BrandMark` y `PagePlaceholder`. |
+| `shared/layouts/` | `MainLayout.vue`: cabecera, navegación, contenido y pie compartidos. |
+| `shared/views/` | Página 404, que no pertenece a un dominio funcional. |
 | `router/` | Mapa de rutas, guardas de sesión y validación del destino posterior al login. |
-| `composables/` | Sesión compartida y coordinación de formularios, sin Pinia. |
-| `services/http/` | Instancia Axios y normalización de errores/cancelaciones. |
-| `services/authentication/` | CSRF, registro, login, usuario actual y logout. |
+| `shared/composables/` | Sesión compartida por todos los dominios, sin Pinia. |
+| `shared/services/http/` | Instancia Axios y normalización de errores/cancelaciones. |
+
+`resources/js/` es la raíz de fuentes de la SPA, equivalente a `src/` en un
+proyecto Vue independiente. Se conservan las entradas de Laravel/Vite. Los módulos
+de cada dominio utilizan las piezas transversales de `shared`; la sesión recibe
+el servicio de autenticación desde `bootstrap.js`, sin importar ese dominio.
+El router carga las vistas directamente de forma diferida; el índice de
+autenticación no reexporta pantallas ni incorpora sus componentes al arranque.
 
 Las carpetas previstas se crearán al incorporar su primer módulo; no se añaden
 archivos vacíos ni implementaciones ficticias. Los componentes usan Composition
@@ -245,10 +254,10 @@ expone referencias de solo lectura `status` (`loading`, `authenticated`, `guest`
 - No se usan localStorage, sessionStorage ni un almacén de tokens. Un fallo de arranque
   queda en `session.error`; se puede reintentar explícitamente con `restore()`.
 
-Ejemplo de uso dentro del `setup` de una pantalla:
+Ejemplo de uso dentro del `setup` de una vista bajo `domains/authentication/views`:
 
 ```js
-import { useSession } from '../composables/useSession';
+import { useSession } from '../../../shared/composables/useSession';
 
 const session = useSession();
 // Tras comprobar que session.status.value no es 'loading':

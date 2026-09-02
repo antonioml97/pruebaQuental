@@ -1,9 +1,9 @@
 import { createApp } from 'vue';
 import App from './App.vue';
 import { createAppRouter } from './router';
-import { createApiClient } from './services/http/createApiClient';
-import { createAuthenticationService } from './services/authentication/createAuthenticationService';
-import { createSession, sessionKey } from './composables/useSession';
+import { createApiClient } from './shared/services/http/createApiClient';
+import { createAuthenticationService } from './domains/authentication';
+import { createSession, sessionKey } from './shared/composables/useSession';
 import { installSessionGuards } from './router/sessionGuards';
 
 /** Monta sin bloquear la pantalla por la red y restaura únicamente la identidad pública. */

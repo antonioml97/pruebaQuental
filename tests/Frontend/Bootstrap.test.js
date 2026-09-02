@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryHistory } from 'vue-router';
 import { mountApplication } from '../../resources/js/bootstrap';
 import { createAppRouter } from '../../resources/js/router';
-import { createApiClient } from '../../resources/js/services/http/createApiClient';
+import { createApiClient } from '../../resources/js/shared/services/http/createApiClient';
 import { deferred, rejectResponse, response } from './support/http';
 
 let mounted;

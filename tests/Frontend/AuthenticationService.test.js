@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createApiClient } from '../../resources/js/services/http/createApiClient';
-import { createAuthenticationService } from '../../resources/js/services/authentication/createAuthenticationService';
-import { isRequestCancelled } from '../../resources/js/services/http/ApiError';
+import { createApiClient } from '../../resources/js/shared/services/http/createApiClient';
+import { createAuthenticationService } from '../../resources/js/domains/authentication';
+import { isRequestCancelled } from '../../resources/js/shared/services/http/ApiError';
 import { rejectResponse, response } from './support/http';
 
 const user = { id: 1, name: 'Morty', email: 'morty@example.test' };

@@ -1,8 +1,8 @@
 import { computed, onUnmounted, ref } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
-import { useSession } from './useSession';
-import { isRequestCancelled } from '../services/http/ApiError';
-import { validateAuthenticationForm } from '../services/authentication/validateAuthenticationForm';
+import { useSession } from '../../../shared/composables/useSession';
+import { isRequestCancelled } from '../../../shared/services/http/ApiError';
+import { validateAuthenticationForm } from '../services/validateAuthenticationForm';
 
 /** Coordina validación, envío y errores de las dos pantallas, sin guardar credenciales globales. */
 export function useAuthenticationForm(kind, onSuccess) {

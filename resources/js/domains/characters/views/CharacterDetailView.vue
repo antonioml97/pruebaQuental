@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink } from 'vue-router';
-import PagePlaceholder from '../components/PagePlaceholder.vue';
+import PagePlaceholder from '../../../shared/components/PagePlaceholder.vue';
 
 defineProps({ externalId: { type: String, required: true } });
 </script>

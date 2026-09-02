@@ -2,7 +2,7 @@
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import AuthenticationForm from '../components/AuthenticationForm.vue';
 import { useAuthenticationForm } from '../composables/useAuthenticationForm';
-import { loginDestination } from '../router/sessionGuards';
+import { loginDestination } from '../../../router/sessionGuards';
 
 const route = useRoute();
 const router = useRouter();

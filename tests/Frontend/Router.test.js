@@ -13,12 +13,14 @@ describe('Contrato de rutas', () => {
         ['/register', 'register', 'guest', 'Crear cuenta'],
         ['/favorites', 'favorites', 'authenticated', 'Favoritos'],
         ['/desconocida', 'not-found', 'public', 'Página no encontrada'],
-    ])('resuelve %s con nombre, acceso, título y carga diferida', (path, name, access, title) => {
+    ])('resuelve %s con nombre, acceso, título y carga diferida', async (path, name, access, title) => {
         const router = createAppRouter(createMemoryHistory());
         const route = router.resolve(path);
         expect(route.name).toBe(name);
         expect(route.meta).toEqual({ access, title });
         expect(route.matched[0].components.default).toBeTypeOf('function');
+        const view = await route.matched[0].components.default();
+        expect(view.default).toBeTypeOf('object');
     });
 
     it('redirige la raíz al catálogo conservando la consulta', async () => {

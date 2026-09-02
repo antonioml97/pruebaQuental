@@ -6,6 +6,6 @@ export function favoriteTestProvider() {
     return { [favoritesKey]: {
         items: ref([]), loading: ref(false), loaded: ref(true), saving: ref(false),
         error: ref(null), notice: ref(''), authenticated: ref(false), sessionLoading: ref(false), disabled: ref(true),
-        has: () => false, retry: async () => {}, setFavorite: async () => {},
+        has: () => false, retry: async () => {}, add: async () => {}, remove: async () => {},
     } };
 }

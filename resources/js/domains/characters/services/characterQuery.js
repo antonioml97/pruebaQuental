@@ -1,3 +1,5 @@
+import { removeEmptyParams } from '../../../shared/utils/queryParams';
+
 export const statusOptions = [
     { value: 'Alive', label: 'Vivo' }, { value: 'Dead', label: 'Muerto' }, { value: 'unknown', label: 'Desconocido' },
 ];
@@ -29,13 +31,14 @@ export function readCharacterQuery(query) {
 
 /** La URL omite valores vacíos y predeterminados, pero conserva búsquedas y tamaño de página. */
 export function writeCharacterQuery(criteria) {
-    const query = {};
-    for (const field of ['name', 'status', 'species', 'gender']) {
-        if (criteria[field]) query[field] = criteria[field];
-    }
-    if (criteria.page !== 1) query.page = String(criteria.page);
-    if (criteria.per_page !== 20) query.per_page = String(criteria.per_page);
-    return query;
+    return removeEmptyParams({
+        name: criteria.name,
+        status: criteria.status,
+        species: criteria.species,
+        gender: criteria.gender,
+        page: criteria.page === 1 ? undefined : String(criteria.page),
+        per_page: criteria.per_page === 20 ? undefined : String(criteria.per_page),
+    });
 }
 
 export function sameCharacterQuery(left, right) {

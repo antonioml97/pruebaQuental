@@ -6,6 +6,18 @@ import { characterPage } from './support/characters';
 import { rejectResponse, response } from './support/http';
 
 describe('Consulta del catálogo', () => {
+    it('omite filtros vacíos y valores predeterminados al construir la URL', () => {
+        const criteria = readCharacterQuery({ name: '', status: null, species: undefined });
+        expect(writeCharacterQuery(criteria)).toEqual({});
+        expect(criteria).toEqual({ name: '', status: '', species: '', gender: '', page: 1, per_page: 20 });
+    });
+
+    it('conserva únicamente los campos permitidos y serializa la paginación de la URL', () => {
+        const criteria = { ...readCharacterQuery({ name: 'Rick', page: 2, per_page: 7 }), extra: 'no' };
+        expect(writeCharacterQuery(criteria)).toEqual({ name: 'Rick', page: '2', per_page: '7' });
+        expect(criteria.extra).toBe('no');
+    });
+
     it('normaliza filtros y elimina parámetros ajenos, repetidos y fuera de contrato', () => {
         expect(readCharacterQuery({ name: ['Rick', 'Morty'], status: 'alive', species: ' Human ', gender: 'invalid', page: '-2', per_page: '101', token: 'no' }))
             .toEqual({ name: '', status: '', species: 'Human', gender: '', page: 1, per_page: 20 });

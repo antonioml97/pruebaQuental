@@ -33,7 +33,7 @@ describe('Catálogo de personajes', () => {
         expect(wrapper.get('article').text()).toContain('Vivo');
         expect(wrapper.get('article img').attributes('alt')).toBe('Retrato de Rick Sanchez');
         expect(wrapper.get('article img').attributes('loading')).toBe('lazy');
-        expect(wrapper.get('article a').attributes('href')).toBe('/characters/1');
+        expect(wrapper.get('article a').attributes('href')).toBe('/characters/1?name=Rick&status=Alive&species=Human&gender=Male&page=2&per_page=7');
         expect(wrapper.get('[role=status]').text()).toContain('60 personajes');
     });
 

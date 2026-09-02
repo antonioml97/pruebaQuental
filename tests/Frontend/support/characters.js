@@ -13,5 +13,18 @@ export function characterPage({ data = [character], page = 1, perPage = 20, tota
     };
 }
 
-// Los tests de layout y autenticación aíslan el catálogo sin iniciar peticiones de red.
-export const emptyCharacterService = { list: async () => characterPage({ data: [] }) };
+export function characterDetail(overrides = {}) {
+    return {
+        ...character,
+        origin: { id: 1, name: 'Earth (C-137)', type: 'Planet', dimension: 'Dimension C-137' },
+        current_location: { id: 3, name: 'Citadel of Ricks', type: 'Space station', dimension: 'unknown' },
+        episodes: [{ id: 1, name: 'Pilot', code: 'S01E01', air_date: '2013-12-02' }],
+        ...overrides,
+    };
+}
+
+// Los tests de layout y autenticación aíslan los personajes sin peticiones de red.
+export const emptyCharacterService = {
+    list: async () => characterPage({ data: [] }),
+    detail: async (id) => characterDetail({ id: Number(id), name: `Personaje #${id}` }),
+};

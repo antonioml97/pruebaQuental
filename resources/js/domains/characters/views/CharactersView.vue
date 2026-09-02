@@ -30,7 +30,7 @@ const announcement = computed(() => loading.value ? 'Cargando personajes…'
             </div>
             <template v-else-if="result">
                 <ul v-if="result.data.length" aria-label="Personajes encontrados" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                    <li v-for="character in result.data" :key="character.id" class="min-w-0"><CharacterCard :character="character" /></li>
+                    <li v-for="character in result.data" :key="character.id" class="min-w-0"><CharacterCard :character="character" :catalog-query="criteria" /></li>
                 </ul>
                 <div v-else class="rounded-2xl border border-line bg-white p-8 text-center">
                     <h2 class="text-xl font-semibold">{{ criteria.page > result.meta.last_page ? 'Esta página no tiene resultados' : 'No hay personajes para esta búsqueda' }}</h2>

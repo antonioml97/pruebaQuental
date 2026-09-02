@@ -56,13 +56,13 @@ catálogo en `/characters`. Vue Router 4 utiliza historial HTML5 y
 carga cada vista de forma diferida, dentro de un layout compartido con navegación
 adaptable a móvil. Al arrancar recupera el usuario mediante la API y mantiene el
 estado de sesión. Incluye registro, login, logout y guardas de navegación. Las
-consultas de catálogo incluyen filtros y paginación. El detalle y los favoritos
-siguen pendientes de los issues #30–#31.
+consultas de catálogo incluyen filtros y paginación, y cada personaje dispone de
+una ficha pública. La interfaz de favoritos sigue pendiente del issue #31.
 
 | URL | Vista | Acceso previsto |
 | --- | --- | --- |
 | `/characters` | Catálogo con filtros, paginación y estados de carga/error/vacío. | Público. |
-| `/characters/:externalId` | Detalle provisional, identificador entero positivo. | Público. |
+| `/characters/:externalId` | Ficha con datos, localizaciones y episodios; identificador público entero positivo. | Público. |
 | `/login` | Inicio de sesión y recuperación del destino original. | Invitado. |
 | `/register` | Registro con inicio de sesión automático. | Invitado. |
 | `/favorites` | Favoritos provisionales, sin datos privados. | Autenticado. |
@@ -120,7 +120,7 @@ de Swagger durante el build no corresponde al bundle de Vue.
 | --- | --- |
 | `app.js`, `bootstrap.js` y `App.vue` | Composición, montaje y recuperación inicial de sesión. |
 | `domains/authentication/` | Componentes, composables, servicios y vistas de registro/login. `index.js` expone el servicio público del dominio. |
-| `domains/characters/` | Tarjetas, filtros, paginación, consulta de catálogo y vistas diferidas; detalle todavía provisional. |
+| `domains/characters/` | Catálogo y detalle: componentes de presentación, composables de carga/cancelación, servicio HTTP y vistas diferidas. |
 | `domains/favorites/views/` | Pantalla diferida de favoritos. |
 | `shared/components/` | Presentación transversal: `BrandMark` y `PagePlaceholder`. |
 | `shared/layouts/` | `MainLayout.vue`: cabecera, navegación, contenido y pie compartidos. |
@@ -173,8 +173,32 @@ personajes; un listado vacío no ejecuta automáticamente la sincronización.
   incluyen texto alternativo, reserva de espacio y sustituto de imágenes fallidas.
 
 Ejemplo: `/characters?name=Rick&status=Alive&page=2&per_page=7`.
-Las tarjetas enlazan a la ruta de detalle ya existente; su contenido completo
-se implementará en el issue #30.
+Las tarjetas enlazan a la ficha conservando los filtros y la página en su URL.
+
+### Detalle público del personaje
+
+`/characters/:externalId` consulta `GET /api/characters/{externalId}` sin exigir
+login. Usa el identificador público del personaje, nunca la clave local de la base.
+
+- `createCharacterService.detail` valida el identificador y la respuesta;
+  `useCharacterDetail` gestiona carga, error y cancelación. Cambiar de personaje
+  o salir cancela e invalida la petición anterior, sin reintentos automáticos.
+- `CharacterProfile` presenta imagen y atributos. Comparte `CharacterImage` y
+  `CharacterFacts` con las tarjetas para conservar las etiquetas y alternativas.
+- Origen y localización actual se muestran por separado. Las relaciones nulas
+  y los valores `unknown` tienen una explicación en castellano.
+- Los episodios incluyen nombre, código y fecha de emisión en castellano.
+  Se dibujan inicialmente 20; «Mostrar más episodios» añade otros 20 y lleva el
+  foco al primer elemento nuevo. La API entrega la lista completa: no se añade
+  una paginación de servidor ni se hacen nuevas peticiones al desplegarla.
+- «Volver a personajes» reconstruye una ruta interna con los filtros y página
+  de la URL. Funciona también al recargar o abrir la ficha en otra pestaña.
+  Solo acepta parámetros de búsqueda conocidos, no destinos externos.
+- Se distinguen carga, personaje inexistente (404) y otros fallos con reintento
+  manual. El enlace de regreso permanece disponible en todos esos estados.
+
+El slot `actions` de `CharacterProfile` permite incorporar la acción de favoritos
+en #31; por ahora no muestra botones ni realiza consultas de favoritos.
 
 ### Variables públicas
 

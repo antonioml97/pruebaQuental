@@ -55,21 +55,23 @@ La entrada `/` sirve una vista Blade mínima que monta `App.vue` y redirige al
 catálogo provisional en `/characters`. Vue Router 4 utiliza historial HTML5 y
 carga cada vista de forma diferida, dentro de un layout compartido con navegación
 adaptable a móvil. Al arrancar recupera el usuario mediante la API y mantiene el
-estado de sesión. Todavía no hay formularios, guardas de rutas ni consultas de
-catálogo o favoritos: se incorporarán en los issues #28–#31.
+estado de sesión. Incluye registro, login, logout y guardas de navegación. Las
+consultas de catálogo y favoritos siguen pendientes de los issues #29–#31.
 
 | URL | Vista | Acceso previsto |
 | --- | --- | --- |
 | `/characters` | Catálogo provisional. | Público. |
 | `/characters/:externalId` | Detalle provisional, identificador entero positivo. | Público. |
-| `/login` | Inicio de sesión provisional. | Invitado. |
-| `/register` | Registro provisional. | Invitado. |
+| `/login` | Inicio de sesión y recuperación del destino original. | Invitado. |
+| `/register` | Registro con inicio de sesión automático. | Invitado. |
 | `/favorites` | Favoritos provisionales, sin datos privados. | Autenticado. |
 | Cualquier otra ruta del cliente | Página no encontrada. | Público. |
 
 Los metadatos `title` y `access` centralizan el título y el acceso previsto de
-cada ruta; **todavía no son un control de sesión**. La API mantiene su propia
-autenticación y autorización. El layout actualiza el título del documento y lleva
+cada ruta. Las guardas esperan a la sesión pendiente: un invitado que abre
+favoritos termina en login y un autenticado que abre login o registro vuelve al
+catálogo. **Las guardas del cliente no sustituyen la autorización de la API.**
+El layout actualiza el título del documento y lleva
 el foco al contenido al navegar. Incluye un enlace «Saltar al contenido» y un
 menú móvil con botón nativo, estado `aria-expanded` y cierre mediante Escape.
 
@@ -116,11 +118,11 @@ de Swagger durante el build no corresponde al bundle de Vue.
 | Ubicación bajo `resources/js` | Responsabilidad |
 | --- | --- |
 | `app.js`, `bootstrap.js` y `App.vue` | Composición, montaje y recuperación inicial de sesión. |
-| `components/` | Piezas de presentación reutilizables, como `BrandMark.vue`. |
+| `components/` | Presentación reutilizable: marca y formulario accesible de autenticación. |
 | `views/` | Pantallas diferidas de catálogo, detalle, acceso, registro, favoritos y 404. |
 | `layouts/` | `MainLayout.vue`: cabecera, navegación, contenido y pie compartidos. |
-| `router/` | Mapa explícito de rutas, metadatos e historial con Vue Router. |
-| `composables/useSession.js` | Sesión reactiva compartida mediante provide/inject, sin Pinia. |
+| `router/` | Mapa de rutas, guardas de sesión y validación del destino posterior al login. |
+| `composables/` | Sesión compartida y coordinación de formularios, sin Pinia. |
 | `services/http/` | Instancia Axios y normalización de errores/cancelaciones. |
 | `services/authentication/` | CSRF, registro, login, usuario actual y logout. |
 
@@ -166,6 +168,8 @@ El cliente HTTP se comprueba con adaptadores Axios simulados y un transporte XHR
 simulado para verificar la cabecera CSRF y `withCredentials`. Las pruebas de
 sesión cubren éxito, 401, 419, 422, errores de red, cancelación y concurrencia;
 las de arranque no requieren cuentas reales ni conexión al backend.
+Se comprueban también formularios, foco y etiquetas, envíos duplicados, guardas,
+redirecciones seguras y recuperación manual de CSRF al entrar o salir.
 
 ## Sincronización del catálogo
 
@@ -221,7 +225,9 @@ los campos públicos `id`, `name` y `email`. La cookie de autenticación permane
 en el navegador, inaccesible a JavaScript; no hay renovación de tokens.
 
 `bootstrap.js` crea una sesión por aplicación y la proporciona a las vistas.
-Monta la pantalla sin esperar a la red e inicia `GET /api/auth/user`. `useSession()`
+Inicia `GET /api/auth/user` antes de la navegación inicial para que una guarda
+privada pueda esperar sin bloquear el arranque. Monta el layout mientras se
+resuelve la ruta y mantiene las páginas públicas independientes de la red. `useSession()`
 expone referencias de solo lectura `status` (`loading`, `authenticated`, `guest`),
 `user`, `error` e `isAuthenticated`, además de `restore`, `login`, `register` y `logout`.
 
@@ -231,14 +237,15 @@ expone referencias de solo lectura `status` (`loading`, `authenticated`, `guest`
   en `session.error`; una avería de red no demuestra que la cookie haya caducado.
 - Las restauraciones simultáneas comparten la petición. Mientras hay una operación
   pendiente, otra operación de sesión se rechaza con `session_busy`, evitando
-  respuestas que compitan por la cookie. La futura UI deberá respetar `loading`.
+  respuestas que compitan por la cookie. La UI respeta `loading` y las guardas
+  esperan mediante `whenIdle()` sin iniciar consultas adicionales.
 - Se aceptan opciones `{ signal }` con `AbortController`. Cancelar no cierra la sesión
   ni garantiza deshacer una escritura que ya llegó al servidor; `restore()` permite
   reconciliar el estado. La señal de la primera restauración controla la petición compartida.
 - No se usan localStorage, sessionStorage ni un almacén de tokens. Un fallo de arranque
   queda en `session.error`; se puede reintentar explícitamente con `restore()`.
 
-Ejemplo de uso dentro del `setup` de una futura pantalla (todavía no hay formularios):
+Ejemplo de uso dentro del `setup` de una pantalla:
 
 ```js
 import { useSession } from '../composables/useSession';
@@ -258,6 +265,35 @@ y `headers` (por ejemplo, `Retry-After`), pero no la configuración de la petici
 que podría contener una contraseña. Las cancelaciones permanecen identificables
 con `isRequestCancelled`. Ni un 401 ni un 419 provocan reenvíos automáticos de
 mutaciones; cada consumidor recibe el error para decidir cómo presentarlo.
+
+### Registro, login y logout
+
+- El registro pide nombre, correo, contraseña y confirmación. Valida presencia,
+  formato básico de correo, longitud mínima y coincidencia de contraseñas; Laravel
+  sigue siendo la autoridad sobre unicidad, fortaleza y el resto de reglas.
+- El login valida correo y contraseña obligatorios, sin exigir reglas de registro
+  a una contraseña existente. Tras entrar vuelve al destino indicado en `redirect`
+  solo si es una ruta conocida de la SPA que no sea login/registro. URLs externas,
+  destinos inválidos y parámetros repetidos se descartan a favor del catálogo.
+- El registro siempre termina en el catálogo. El layout muestra la identidad pública
+  y «Cerrar sesión» en lugar de los enlaces de acceso y registro.
+- Los envíos desactivan el formulario y bloquean la salida de esa pantalla mientras
+  está pendiente la escritura. No se aborta una mutación al cambiar de ruta, porque
+  abortar la petición no garantiza deshacer la cookie que haya emitido el servidor.
+- Los errores de campo se vinculan con `aria-describedby` y `aria-invalid`. Un
+  resumen anunciado recibe el foco y permite saltar a cada campo; las contraseñas
+  se borran tras el éxito o al desmontar la vista.
+- Ante un 419 se muestra «Renovar CSRF y reintentar». Ese nuevo envío, iniciado por
+  la persona, prepara CSRF antes del POST. Un segundo 419 vuelve a mostrarse sin
+  bucles ni reenvíos automáticos. Logout ofrece el mismo mecanismo.
+- Logout revoca la sesión mediante la API y lleva al catálogo. Si falla por red o
+  CSRF, conserva la identidad anterior y permite reintentar; si devuelve 401, la
+  sesión ya no existe y se considera cerrada.
+
+Para probarlo en el navegador: abre `/register`, crea una cuenta, visita `/favorites`,
+recarga y cierra sesión desde el menú. Al abrir favoritos de nuevo se solicitará
+login y, tras entrar, volverás a esa ruta. El contenido de favoritos sigue siendo
+provisional hasta el issue #31.
 
 Para un cliente separado, `FRONTEND_URL` debe coincidir con su origen permitido.
 La configuración CORS por sí sola no comparte cookies entre dominios: la SPA

@@ -3,6 +3,8 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { createMemoryHistory } from 'vue-router';
 import App from '../../resources/js/App.vue';
 import { createAppRouter } from '../../resources/js/router';
+import { createSession, sessionKey } from '../../resources/js/composables/useSession';
+import { ApiError } from '../../resources/js/services/http/ApiError';
 
 enableAutoUnmount(afterEach);
 
@@ -17,7 +19,9 @@ async function mountApp(path = '/') {
     const router = createAppRouter(createMemoryHistory());
     await router.push(path);
     await router.isReady();
-    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router] } });
+    const session = createSession({ currentUser: () => Promise.reject(new ApiError({ status: 401, code: 'unauthenticated', message: 'Invitado' })) });
+    await session.restore();
+    const wrapper = mount(App, { attachTo: document.body, global: { plugins: [router], provide: { [sessionKey]: session } } });
     return { wrapper, router };
 }
 

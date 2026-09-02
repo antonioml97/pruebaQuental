@@ -51,4 +51,22 @@ describe('Arranque y recuperación de sesión', () => {
         expect(adapter).toHaveBeenCalledTimes(1);
         expect(session.error.value?.status ?? null).toBe(status === 401 ? null : status);
     });
+
+    it.each([true, false])('resuelve una entrada privada durante la restauración, autenticado=%s', async (authenticated) => {
+        const request = deferred();
+        const history = createMemoryHistory();
+        history.push('/favorites?page=2');
+        const router = createAppRouter(history);
+        const adapter = vi.fn((config) => request.promise.then(() => authenticated
+            ? response(config, { data: { id: 1, name: 'Morty', email: 'morty@example.test' } })
+            : rejectResponse(config, 401, 'unauthenticated')));
+        const start = mountApplication({ router, client: createApiClient({ adapter }) });
+        expect(document.body.textContent).toContain('Preparando la página');
+        request.resolve();
+        mounted = await start;
+        await mounted.ready;
+        expect(router.currentRoute.value.name).toBe(authenticated ? 'favorites' : 'login');
+        expect(document.querySelector('h1').textContent).toBe(authenticated ? 'Tus favoritos' : 'Iniciar sesión');
+        expect(adapter).toHaveBeenCalledTimes(1);
+    });
 });
